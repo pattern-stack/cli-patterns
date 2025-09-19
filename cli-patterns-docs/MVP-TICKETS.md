@@ -643,7 +643,7 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 - P1 (High): 10 tickets
 - P2 (Medium): 4 tickets
 
-**By Phase**:
+**By Original Phase**:
 - Phase 1 (Core Types): 6 tickets
 - Phase 2 (Definitions): 4 tickets
 - Phase 3 (Execution): 5 tickets
@@ -652,22 +652,70 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 **Estimated Total Effort**: ~15-20 developer days
 
-## Implementation Order
+## Implementation Order (REVISED FOR INCREMENTAL VALUE)
 
-### Sprint 1: Foundation (Week 1)
-- CLIP-001 through CLIP-006 (Core type system)
+### Milestone 1: Minimal Interactive Shell (Week 1)
+**Goal**: Get a basic interactive shell running that can execute hardcoded bash commands
 
-### Sprint 2: Definition System (Week 2)
-- CLIP-007 through CLIP-010 (Loading wizards)
+**Tickets**:
+- CLIP-001: Setup Project Structure
+- CLIP-002: Core Type Definitions (minimal - just what's needed)
+- CLIP-003: Core Pydantic Models (WizardConfig, BranchConfig, SessionState only)
+- CLIP-004: Action Models (BashActionConfig only)
+- CLIP-016: Setup prompt_toolkit Integration
+- CLIP-017: Command Parser (basic commands only)
+- CLIP-012: Subprocess Action Executor
 
-### Sprint 3: Execution Core (Week 3)
-- CLIP-011 through CLIP-015 (Execution engine)
+**Deliverable**: Can launch shell, type commands, run bash actions
 
-### Sprint 4: Interactive Shell (Week 4)
-- CLIP-016 through CLIP-023 (Interactive UI)
+### Milestone 2: YAML Wizards Working (Week 2)
+**Goal**: Load and execute YAML-defined wizards interactively
 
-### Sprint 5: Polish (Week 5)
-- CLIP-024 through CLIP-028 (Testing & docs)
+**Tickets**:
+- CLIP-007: YAML Definition Parser
+- CLIP-011: Execution Engine (basic version)
+- CLIP-014: Navigation Controller
+- CLIP-018: Interactive Navigation Commands
+- CLIP-019: Action Execution Commands
+
+**Deliverable**: Can load a YAML wizard and navigate/execute it
+
+### Milestone 3: Full Type System & Options (Week 3)
+**Goal**: Complete type safety and user input collection
+
+**Tickets**:
+- CLIP-005: Option Models with Type Safety
+- CLIP-006: Core Protocols
+- CLIP-021: Interactive Option Collection
+- CLIP-020: Tab Completion System
+- CLIP-022: Help System
+
+**Deliverable**: Full option collection, help, and tab completion
+
+### Milestone 4: Python Decorators & Advanced Features (Week 4)
+**Goal**: Support Python-defined wizards and remaining action types
+
+**Tickets**:
+- CLIP-009: Python Decorator System
+- CLIP-013: Python Action Executor
+- CLIP-008: Definition Registry
+- CLIP-010: Definition Validation
+- CLIP-015: State Observer System
+- CLIP-023: Rich Output Formatting
+
+**Deliverable**: Full feature set with both YAML and Python support
+
+### Milestone 5: Production Ready (Week 5)
+**Goal**: Testing, documentation, and polish
+
+**Tickets**:
+- CLIP-024: Unit Test Suite
+- CLIP-025: Integration Tests
+- CLIP-026: User Documentation
+- CLIP-027: Example Wizards
+- CLIP-028: CI/CD Pipeline
+
+**Deliverable**: Production-ready, tested, documented system
 
 ## Dependencies Graph
 
