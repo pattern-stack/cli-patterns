@@ -2,14 +2,15 @@
 
 ## Executive Summary
 
-CLI Patterns is a type-safe, wizard-based command-line interface system designed to provide a unified interaction model across all Pattern Stack projects. The system emphasizes strong typing, stateless execution, and a hybrid definition model supporting both YAML configuration and Python code.
+CLI Patterns is a type-safe, interactive wizard-based terminal application framework designed to provide a unified interaction model across all Pattern Stack projects. Users launch the application and operate within an interactive shell environment with rich navigation capabilities. The system emphasizes strong typing, stateless execution, and a hybrid definition model supporting both YAML configuration and Python code.
 
 ## 1. Product Overview
 
 ### 1.1 Vision
-Create a universal CLI framework that is intentionally lightweight, heavily type-protected, and provides a consistent interface across all Pattern Stack projects while remaining simple enough to eventually port to Rust.
+Create a universal interactive terminal framework that is intentionally lightweight, heavily type-protected, and provides a consistent wizard-based interface across all Pattern Stack projects while remaining simple enough to eventually port to Rust. Users launch into an interactive shell where they navigate branches, execute actions, and manage state within a rich terminal experience.
 
 ### 1.2 Goals
+- **Interactive Experience**: Rich terminal UI with navigation, menus, and command completion
 - **Type Safety**: Leverage Python's type system to its fullest with MyPy strict mode compliance
 - **Simplicity**: Sophisticated type system with simple runtime behavior
 - **Flexibility**: Support both declarative (YAML) and programmatic (Python) wizard definitions
@@ -19,18 +20,22 @@ Create a universal CLI framework that is intentionally lightweight, heavily type
 ### 1.3 Non-Goals for MVP
 - Complex shell management (tmux integration)
 - Cross-project navigation
-- UI implementation (only protocols)
+- Multiple UI implementations (focus on prompt_toolkit for MVP)
 - Hook systems (pre/post execution)
 - Remote execution
 - Transaction/rollback support
+- Web-based interface
 
 ## 2. Key Features
 
-### 2.1 Wizard-Based Navigation
+### 2.1 Interactive Wizard Navigation
+- Launch into persistent interactive shell
 - Tree-structured command organization
-- Branch-based execution flow
+- Branch-based execution flow with navigation commands
 - Menu-driven navigation between branches
-- State management within execution context
+- Command history and completion
+- State management within session
+- Help system and contextual hints
 
 ### 2.2 Hybrid Definition System
 - **YAML/JSON Definitions**: Simple, declarative wizard definitions for straightforward workflows
@@ -105,16 +110,20 @@ cli_patterns/
 - Full access to SessionState for complex operations
 - Type checking catches errors at development time
 
-### 4.3 End User Running Wizard
+### 4.3 End User Running Interactive Wizard
 **As an** end user
-**I want to** run wizards with clear navigation
-**So that** I can complete tasks without memorizing commands
+**I want to** launch an interactive wizard shell with rich navigation
+**So that** I can explore and execute tasks without memorizing commands
 
 **Acceptance Criteria:**
-- Clear presentation of available options
-- Navigation between branches is intuitive
+- Launch into interactive mode with welcome message
+- Tab completion for commands and options
+- Clear prompt showing current branch context
+- Navigation commands (back, forward, jump to branch)
+- List available actions and menus at any time
 - Input validation provides helpful error messages
-- Can quit or go back at any point
+- Command history with arrow keys
+- Can quit or restart at any point
 
 ## 5. Technical Requirements
 
@@ -126,8 +135,9 @@ cli_patterns/
 ### 5.2 Dependencies
 - **pydantic**: Model validation and serialization
 - **pyyaml**: YAML parsing
-- **click** or **typer**: CLI framework (TBD)
+- **prompt_toolkit**: Interactive terminal UI framework
 - **asyncio**: Async execution
+- **typing_extensions**: Advanced typing features
 
 ### 5.3 Type Safety Requirements
 - No untyped functions
@@ -166,6 +176,7 @@ See linked ADRs:
 - [ADR-003: Subprocess for Shell Execution](./adrs/ADR-003-subprocess-execution.md)
 - [ADR-004: Branch-Level UI Protocol](./adrs/ADR-004-branch-ui-protocol.md)
 - [ADR-005: Type System Design](./adrs/ADR-005-type-system.md)
+- [ADR-006: Interactive Terminal UI with prompt_toolkit](./adrs/ADR-006-interactive-terminal-ui.md)
 
 ## 8. Future Considerations
 
@@ -198,10 +209,12 @@ See linked ADRs:
 2. Subprocess executor
 3. Navigation controller
 
-### Phase 4: CLI Entry Point
-1. Click/Typer integration
-2. Wizard discovery
-3. Basic error handling
+### Phase 4: Interactive Shell
+1. prompt_toolkit integration
+2. Command parsing and routing
+3. Interactive navigation implementation
+4. Help system
+5. Basic error handling
 
 ### Phase 5: Testing & Documentation
 1. Unit tests for all components
@@ -210,7 +223,36 @@ See linked ADRs:
 
 ## 10. Appendices
 
-### 10.1 Example YAML Wizard
+### 10.1 Example Interactive Session
+```bash
+$ cli-patterns simple-setup
+╔══════════════════════════════════════════╗
+║  Welcome to Simple Setup Wizard v1.0.0  ║
+╚══════════════════════════════════════════╝
+
+Type 'help' for commands, 'quit' to exit
+
+wizard[main]> list
+Available actions:
+  • check - Check system status
+  • setup - Configure environment
+  • test  - Run validation tests
+
+wizard[main]> run check
+► Executing: Checking system...
+✓ System check complete
+
+wizard[main]> navigate config
+→ Entering branch: Configuration
+
+wizard[config]> back
+← Returning to: Main
+
+wizard[main]> quit
+Goodbye!
+```
+
+### 10.2 Example YAML Wizard
 ```yaml
 name: simple-setup
 version: 1.0.0
@@ -225,7 +267,7 @@ branches:
         command: echo "Checking system..."
 ```
 
-### 10.2 Example Python Wizard
+### 10.3 Example Python Wizard
 ```python
 @wizard(name="complex-setup", version="1.0.0")
 class ComplexWizard:
@@ -239,7 +281,7 @@ class ComplexWizard:
 
 ---
 
-**Document Version**: 1.0.0
+**Document Version**: 1.1.0
 **Date**: 2024-01-18
 **Author**: Pattern Stack Team
 **Status**: Draft
