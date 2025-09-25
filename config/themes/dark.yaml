@@ -1,0 +1,36 @@
+# Dark theme configuration for CLI Patterns
+name: "dark"
+description: "Professional dark theme optimized for dark terminals"
+
+# Category token mappings
+categories:
+  cat_1: "cyan"
+  cat_2: "magenta"
+  cat_3: "yellow"
+  cat_4: "green"
+  cat_5: "blue"
+  cat_6: "red"
+  cat_7: "white"
+  cat_8: "bright_black"
+
+# Hierarchy token mappings
+hierarchies:
+  primary: "bold"
+  secondary: "default"
+  tertiary: "dim"
+  quaternary: "dim italic"
+
+# Status token mappings
+statuses:
+  success: "green"
+  error: "red bold"
+  warning: "yellow"
+  info: "blue"
+  muted: "bright_black"
+  running: "cyan italic"
+
+# Emphasis token mappings
+emphases:
+  strong: "bold"
+  normal: "default"
+  subtle: "dim"

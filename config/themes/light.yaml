@@ -1,0 +1,36 @@
+# Light theme configuration for CLI Patterns
+name: "light"
+description: "Professional light theme optimized for light terminals"
+
+# Category token mappings
+categories:
+  cat_1: "blue"
+  cat_2: "magenta"
+  cat_3: "bright_yellow"
+  cat_4: "green"
+  cat_5: "cyan"
+  cat_6: "red"
+  cat_7: "black"
+  cat_8: "bright_black"
+
+# Hierarchy token mappings
+hierarchies:
+  primary: "bold"
+  secondary: "default"
+  tertiary: "dim"
+  quaternary: "dim italic"
+
+# Status token mappings
+statuses:
+  success: "green"
+  error: "red bold"
+  warning: "bright_yellow"
+  info: "blue"
+  muted: "bright_black"
+  running: "cyan italic"
+
+# Emphasis token mappings
+emphases:
+  strong: "bold"
+  normal: "default"
+  subtle: "dim"
