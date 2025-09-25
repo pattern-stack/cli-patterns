@@ -465,6 +465,7 @@ class TestThemeLoader:
         from cli_patterns.ui.design.registry import theme_registry
 
         # Ensure we start with dark theme
+        theme_registry.set_current("dark")
         assert theme_registry.get_current().name == "dark"
 
         apply_theme_from_env()
