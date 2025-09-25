@@ -175,4 +175,4 @@ Desktop.ini
 # IDE specific files
 *.swp
 *.swo
-*~
+*~.cli_patterns_history
