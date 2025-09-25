@@ -100,9 +100,7 @@ class SubprocessExecutor:
         # Show running status
         if self.stream_output:
             running_style = theme_registry.resolve(StatusToken.RUNNING)
-            self.console.print(
-                Text(f"Running: {command}", style=running_style)
-            )
+            self.console.print(Text(f"Running: {command}", style=running_style))
 
         # Prepare command
         if isinstance(command, list):
@@ -198,11 +196,15 @@ class SubprocessExecutor:
                 self.console.print(Text("Command interrupted", style=interrupt_style))
             elif exit_code == 0:
                 success_style = theme_registry.resolve(StatusToken.SUCCESS)
-                self.console.print(Text("Command completed successfully", style=success_style))
+                self.console.print(
+                    Text("Command completed successfully", style=success_style)
+                )
             else:
                 error_style = theme_registry.resolve(StatusToken.ERROR)
                 self.console.print(
-                    Text(f"Command failed with exit code {exit_code}", style=error_style)
+                    Text(
+                        f"Command failed with exit code {exit_code}", style=error_style
+                    )
                 )
 
         return CommandResult(
