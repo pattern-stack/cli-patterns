@@ -14,7 +14,7 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ## Phase 1: Core Type System
 
-### CLIP-001: Setup Project Structure and Configuration
+### CLI-001: Setup Project Structure and Configuration
 **Priority**: P0 - Blocker
 **Effort**: S
 **Dependencies**: None
@@ -35,10 +35,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-002: Implement Core Type Definitions
+### CLI-002: Implement Core Type Definitions
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-001
+**Dependencies**: CLI-001
 
 **Description**: Implement semantic types and base type definitions from the spec.
 
@@ -55,10 +55,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-003: Create Pydantic Base Models
+### CLI-003: Create Pydantic Base Models
 **Priority**: P0 - Blocker
 **Effort**: L
-**Dependencies**: CLIP-002
+**Dependencies**: CLI-002
 
 **Description**: Implement core Pydantic models for validation and serialization.
 
@@ -77,10 +77,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-004: Implement Action Models with Discriminated Unions
+### CLI-004: Implement Action Models with Discriminated Unions
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-003
+**Dependencies**: CLI-003
 
 **Description**: Create action configuration models using discriminated unions.
 
@@ -99,10 +99,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-005: Implement Option Models with Type Safety
+### CLI-005: Implement Option Models with Type Safety
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-003
+**Dependencies**: CLI-003
 
 **Description**: Create option configuration models for user input collection.
 
@@ -121,10 +121,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-006: Define Core Protocols
+### CLI-006: Define Core Protocols
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-002, CLIP-003
+**Dependencies**: CLI-002, CLI-003
 
 **Description**: Define runtime-checkable protocols for extensibility.
 
@@ -145,10 +145,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ## Phase 2: Definition Loading
 
-### CLIP-007: Implement YAML Definition Parser
+### CLI-007: Implement YAML Definition Parser
 **Priority**: P0 - Blocker
 **Effort**: L
-**Dependencies**: CLIP-003, CLIP-004, CLIP-005
+**Dependencies**: CLI-003, CLI-004, CLI-005
 
 **Description**: Build YAML parser that creates validated WizardConfig instances.
 
@@ -167,10 +167,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-008: Create Definition Registry System
+### CLI-008: Create Definition Registry System
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-007
+**Dependencies**: CLI-007
 
 **Description**: Build registry for discovering and loading wizard definitions.
 
@@ -189,10 +189,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-009: Implement Python Decorator System
+### CLI-009: Implement Python Decorator System
 **Priority**: P1 - High
 **Effort**: L
-**Dependencies**: CLIP-003, CLIP-006
+**Dependencies**: CLI-003, CLI-006
 
 **Description**: Create decorator-based wizard definition system for Python.
 
@@ -211,10 +211,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-010: Build Definition Validation System
+### CLI-010: Build Definition Validation System
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-007, CLIP-009
+**Dependencies**: CLI-007, CLI-009
 
 **Description**: Comprehensive validation for wizard definitions.
 
@@ -235,10 +235,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ## Phase 3: Execution Engine
 
-### CLIP-011: Implement Stateless Execution Engine
+### CLI-011: Implement Stateless Execution Engine
 **Priority**: P0 - Blocker
 **Effort**: L
-**Dependencies**: CLIP-003, CLIP-006
+**Dependencies**: CLI-003, CLI-006
 
 **Description**: Build core execution engine for running wizards.
 
@@ -257,10 +257,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-012: Create Subprocess Action Executor
+### CLI-012: Create Subprocess Action Executor
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-004, CLIP-011
+**Dependencies**: CLI-004, CLI-011
 
 **Description**: Implement subprocess-based shell command execution.
 
@@ -279,10 +279,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-013: Build Python Action Executor
+### CLI-013: Build Python Action Executor
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-004, CLIP-011
+**Dependencies**: CLI-004, CLI-011
 
 **Description**: Execute Python functions as wizard actions.
 
@@ -301,10 +301,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-014: Implement Navigation Controller
+### CLI-014: Implement Navigation Controller
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-011
+**Dependencies**: CLI-011
 
 **Description**: Handle navigation between wizard branches.
 
@@ -323,10 +323,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-015: Create State Observer System
+### CLI-015: Create State Observer System
 **Priority**: P2 - Medium
 **Effort**: S
-**Dependencies**: CLIP-003, CLIP-011
+**Dependencies**: CLI-003, CLI-011
 
 **Description**: Implement observer pattern for state changes.
 
@@ -346,10 +346,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ## Phase 4: Interactive Shell
 
-### CLIP-016: Setup prompt_toolkit Integration
+### CLI-016: Setup prompt_toolkit Integration
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-011
+**Dependencies**: CLI-011
 
 **Description**: Initialize prompt_toolkit for interactive terminal UI.
 
@@ -368,10 +368,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-017: Implement Command Parser and Router
+### CLI-017: Implement Command Parser and Router
 **Priority**: P0 - Blocker
 **Effort**: L
-**Dependencies**: CLIP-016
+**Dependencies**: CLI-016
 
 **Description**: Parse and route interactive commands to appropriate handlers.
 
@@ -390,10 +390,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-018: Build Interactive Navigation Commands
+### CLI-018: Build Interactive Navigation Commands
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-014, CLIP-017
+**Dependencies**: CLI-014, CLI-017
 
 **Description**: Implement navigation commands for interactive mode.
 
@@ -412,10 +412,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-019: Create Action Execution Commands
+### CLI-019: Create Action Execution Commands
 **Priority**: P0 - Blocker
 **Effort**: M
-**Dependencies**: CLIP-012, CLIP-013, CLIP-017
+**Dependencies**: CLI-012, CLI-013, CLI-017
 
 **Description**: Commands for running wizard actions interactively.
 
@@ -434,10 +434,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-020: Implement Tab Completion System
+### CLI-020: Implement Tab Completion System
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-017
+**Dependencies**: CLI-017
 
 **Description**: Add intelligent tab completion for commands and arguments.
 
@@ -456,10 +456,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-021: Build Interactive Option Collection
+### CLI-021: Build Interactive Option Collection
 **Priority**: P0 - Blocker
 **Effort**: L
-**Dependencies**: CLIP-005, CLIP-016
+**Dependencies**: CLI-005, CLI-016
 
 **Description**: Implement UIRenderer protocol for interactive option collection.
 
@@ -478,10 +478,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-022: Create Help System
+### CLI-022: Create Help System
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-017
+**Dependencies**: CLI-017
 
 **Description**: Comprehensive help system for interactive mode.
 
@@ -500,10 +500,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-023: Add Rich Output Formatting
+### CLI-023: Add Rich Output Formatting
 **Priority**: P2 - Medium
 **Effort**: M
-**Dependencies**: CLIP-016
+**Dependencies**: CLI-016
 
 **Description**: Enhanced terminal output with colors and formatting.
 
@@ -524,7 +524,7 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ## Phase 5: Testing & Documentation
 
-### CLIP-024: Create Unit Test Suite
+### CLI-024: Create Unit Test Suite
 **Priority**: P0 - Blocker
 **Effort**: XL
 **Dependencies**: All implementation tickets
@@ -546,10 +546,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-025: Build Integration Test Framework
+### CLI-025: Build Integration Test Framework
 **Priority**: P1 - High
 **Effort**: L
-**Dependencies**: CLIP-024
+**Dependencies**: CLI-024
 
 **Description**: Integration tests for complete wizard flows.
 
@@ -568,7 +568,7 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-026: Write User Documentation
+### CLI-026: Write User Documentation
 **Priority**: P1 - High
 **Effort**: L
 **Dependencies**: All implementation tickets
@@ -590,10 +590,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-027: Create Example Wizards
+### CLI-027: Create Example Wizards
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-007, CLIP-009
+**Dependencies**: CLI-007, CLI-009
 
 **Description**: Example wizards demonstrating features.
 
@@ -612,10 +612,10 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ---
 
-### CLIP-028: Setup CI/CD Pipeline
+### CLI-028: Setup CI/CD Pipeline
 **Priority**: P1 - High
 **Effort**: M
-**Dependencies**: CLIP-001, CLIP-024
+**Dependencies**: CLI-001, CLI-024
 
 **Description**: Automated testing and release pipeline.
 
@@ -658,13 +658,13 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 **Goal**: Get a basic interactive shell running that can execute hardcoded bash commands
 
 **Tickets**:
-- CLIP-001: Setup Project Structure
-- CLIP-002: Core Type Definitions (minimal - just what's needed)
-- CLIP-003: Core Pydantic Models (WizardConfig, BranchConfig, SessionState only)
-- CLIP-004: Action Models (BashActionConfig only)
-- CLIP-016: Setup prompt_toolkit Integration
-- CLIP-017: Command Parser (basic commands only)
-- CLIP-012: Subprocess Action Executor
+- CLI-001: Setup Project Structure
+- CLI-002: Core Type Definitions (minimal - just what's needed)
+- CLI-003: Core Pydantic Models (WizardConfig, BranchConfig, SessionState only)
+- CLI-004: Action Models (BashActionConfig only)
+- CLI-016: Setup prompt_toolkit Integration
+- CLI-017: Command Parser (basic commands only)
+- CLI-012: Subprocess Action Executor
 
 **Deliverable**: Can launch shell, type commands, run bash actions
 
@@ -672,11 +672,11 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 **Goal**: Load and execute YAML-defined wizards interactively
 
 **Tickets**:
-- CLIP-007: YAML Definition Parser
-- CLIP-011: Execution Engine (basic version)
-- CLIP-014: Navigation Controller
-- CLIP-018: Interactive Navigation Commands
-- CLIP-019: Action Execution Commands
+- CLI-007: YAML Definition Parser
+- CLI-011: Execution Engine (basic version)
+- CLI-014: Navigation Controller
+- CLI-018: Interactive Navigation Commands
+- CLI-019: Action Execution Commands
 
 **Deliverable**: Can load a YAML wizard and navigate/execute it
 
@@ -684,11 +684,11 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 **Goal**: Complete type safety and user input collection
 
 **Tickets**:
-- CLIP-005: Option Models with Type Safety
-- CLIP-006: Core Protocols
-- CLIP-021: Interactive Option Collection
-- CLIP-020: Tab Completion System
-- CLIP-022: Help System
+- CLI-005: Option Models with Type Safety
+- CLI-006: Core Protocols
+- CLI-021: Interactive Option Collection
+- CLI-020: Tab Completion System
+- CLI-022: Help System
 
 **Deliverable**: Full option collection, help, and tab completion
 
@@ -696,12 +696,12 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 **Goal**: Support Python-defined wizards and remaining action types
 
 **Tickets**:
-- CLIP-009: Python Decorator System
-- CLIP-013: Python Action Executor
-- CLIP-008: Definition Registry
-- CLIP-010: Definition Validation
-- CLIP-015: State Observer System
-- CLIP-023: Rich Output Formatting
+- CLI-009: Python Decorator System
+- CLI-013: Python Action Executor
+- CLI-008: Definition Registry
+- CLI-010: Definition Validation
+- CLI-015: State Observer System
+- CLI-023: Rich Output Formatting
 
 **Deliverable**: Full feature set with both YAML and Python support
 
@@ -709,11 +709,11 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 **Goal**: Testing, documentation, and polish
 
 **Tickets**:
-- CLIP-024: Unit Test Suite
-- CLIP-025: Integration Tests
-- CLIP-026: User Documentation
-- CLIP-027: Example Wizards
-- CLIP-028: CI/CD Pipeline
+- CLI-024: Unit Test Suite
+- CLI-025: Integration Tests
+- CLI-026: User Documentation
+- CLI-027: Example Wizards
+- CLI-028: CI/CD Pipeline
 
 **Deliverable**: Production-ready, tested, documented system
 
@@ -721,19 +721,19 @@ This document outlines the implementation tickets for CLI Patterns MVP, organize
 
 ```
 Foundation Layer:
-CLIP-001 → CLIP-002 → CLIP-003 → CLIP-004/005 → CLIP-006
+CLI-001 → CLI-002 → CLI-003 → CLI-004/005 → CLI-006
                           ↓
 Definition Layer:         ↓
-                   CLIP-007/009 → CLIP-008 → CLIP-010
+                   CLI-007/009 → CLI-008 → CLI-010
                           ↓
 Execution Layer:          ↓
-                   CLIP-011 → CLIP-012/013 → CLIP-014 → CLIP-015
+                   CLI-011 → CLI-012/013 → CLI-014 → CLI-015
                           ↓
 Interactive Layer:        ↓
-                   CLIP-016 → CLIP-017 → CLIP-018/019/020 → CLIP-021/022/023
+                   CLI-016 → CLI-017 → CLI-018/019/020 → CLI-021/022/023
                           ↓
 Testing Layer:            ↓
-                   CLIP-024 → CLIP-025 → CLIP-026/027/028
+                   CLI-024 → CLI-025 → CLI-026/027/028
 ```
 
 ---
