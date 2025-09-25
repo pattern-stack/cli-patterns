@@ -71,24 +71,46 @@ class InteractiveShell:
         # Build style dictionary for prompt_toolkit
         style_dict = {
             # Prompt symbol
-            "prompt": theme_registry.resolve(self.prompt_component.category),
+            "prompt": self._normalize_color(theme_registry.resolve(self.prompt_component.category)),
             # Error messages
-            "error": theme_registry.resolve(self.prompt_component.error_status),
+            "error": self._normalize_color(theme_registry.resolve(self.prompt_component.error_status)),
             # Input text
             "": "default",
         }
 
         # Add category colors
         for cat in CategoryToken:
-            color = current_theme.categories[cat]
+            color = self._normalize_color(current_theme.categories[cat])
             style_dict[f"cat-{cat.value}"] = color
 
         # Add status colors
         for status in StatusToken:
             style_str = current_theme.statuses[status]
+            # Normalize color in style string
+            parts = style_str.split()
+            if parts:
+                parts[0] = self._normalize_color(parts[0])
+                style_str = " ".join(parts)
             style_dict[f"status-{status.value}"] = style_str
 
         return PromptStyle.from_dict(style_dict)
+
+    def _normalize_color(self, color: str) -> str:
+        """Normalize color names to prompt_toolkit compatible format.
+
+        Args:
+            color: Color name to normalize
+
+        Returns:
+            prompt_toolkit compatible color name
+        """
+        # Map problematic color names to prompt_toolkit compatible ones
+        color_map = {
+            "bright_black": "#808080",  # Use hex for grey
+            "grey62": "#808080",
+            "grey50": "#808080",
+        }
+        return color_map.get(color, color)
 
     def _get_prompt_message(self) -> HTML:
         """Get the prompt message with styling.

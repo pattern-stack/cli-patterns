@@ -51,7 +51,7 @@ class RichAdapter:
 
         # Map CategoryTokens
         for cat in CategoryToken:
-            color = current_theme.categories[cat]
+            color = self._normalize_color(current_theme.categories[cat])
             styles[f"cat.{cat.value}"] = Style(color=color)
 
         # Map StatusTokens
@@ -59,7 +59,7 @@ class RichAdapter:
             style_str = current_theme.statuses[status]
             # Parse style string (e.g., "red bold" -> color="red", bold=True)
             parts = style_str.split()
-            color = parts[0] if parts else None
+            color = self._normalize_color(parts[0]) if parts else None
             bold = "bold" in parts
             italic = "italic" in parts
             dim = "dim" in parts
@@ -85,6 +85,23 @@ class RichAdapter:
             )
 
         return RichTheme(styles)
+
+    def _normalize_color(self, color: str) -> str:
+        """Normalize color names to Rich-compatible format.
+
+        Args:
+            color: Color name to normalize
+
+        Returns:
+            Rich-compatible color name
+        """
+        # Map problematic color names to Rich-compatible ones
+        color_map = {
+            "bright_black": "grey62",  # A medium grey that works well
+            "bright_yellow": "yellow",
+            "grey50": "grey62",
+        }
+        return color_map.get(color, color)
 
     def panel(
         self,
@@ -117,7 +134,7 @@ class RichAdapter:
             border_category = panel_component.border_category
 
         # Get border color from theme
-        border_color = theme_registry.resolve(border_category)
+        border_color = self._normalize_color(theme_registry.resolve(border_category))
 
         # Get title styling
         # title_style = None  # TODO: Apply title styling to panel
