@@ -9,6 +9,7 @@ def main() -> None:
     """Main entry point for the CLI Patterns interactive shell."""
     try:
         from .ui.shell import run_shell
+
         run_shell()
     except ImportError as e:
         print(f"Error: Failed to import required modules: {e}")

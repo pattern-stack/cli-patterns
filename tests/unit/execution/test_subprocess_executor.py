@@ -9,7 +9,6 @@ import pytest
 from rich.console import Console
 
 from cli_patterns.execution.subprocess_executor import CommandResult, SubprocessExecutor
-from cli_patterns.ui.design.tokens import StatusToken
 
 
 class TestCommandResult:

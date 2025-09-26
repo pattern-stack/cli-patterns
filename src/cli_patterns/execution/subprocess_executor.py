@@ -14,13 +14,12 @@ from __future__ import annotations
 
 import asyncio
 import os
-import signal
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 from rich.console import Console
 from rich.text import Text
 
-from ..ui.design.components import Output, ProgressBar
+from ..ui.design.components import Output
 from ..ui.design.registry import theme_registry
 from ..ui.design.tokens import StatusToken
 
@@ -101,9 +100,7 @@ class SubprocessExecutor:
         # Show running status
         if self.stream_output:
             running_style = theme_registry.resolve(StatusToken.RUNNING)
-            self.console.print(
-                Text(f"Running: {command}", style=running_style)
-            )
+            self.console.print(Text(f"Running: {command}", style=running_style))
 
         # Prepare command
         if isinstance(command, list):
@@ -117,8 +114,8 @@ class SubprocessExecutor:
             process_env.update(env)
 
         # Capture output
-        stdout_lines = []
-        stderr_lines = []
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []
         timed_out = False
         interrupted = False
         exit_code = -1
@@ -199,11 +196,15 @@ class SubprocessExecutor:
                 self.console.print(Text("Command interrupted", style=interrupt_style))
             elif exit_code == 0:
                 success_style = theme_registry.resolve(StatusToken.SUCCESS)
-                self.console.print(Text("Command completed successfully", style=success_style))
+                self.console.print(
+                    Text("Command completed successfully", style=success_style)
+                )
             else:
                 error_style = theme_registry.resolve(StatusToken.ERROR)
                 self.console.print(
-                    Text(f"Command failed with exit code {exit_code}", style=error_style)
+                    Text(
+                        f"Command failed with exit code {exit_code}", style=error_style
+                    )
                 )
 
         return CommandResult(

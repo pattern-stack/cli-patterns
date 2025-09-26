@@ -59,12 +59,14 @@ class RichAdapter:
             style_str = current_theme.statuses[status]
             # Parse style string (e.g., "red bold" -> color="red", bold=True)
             parts = style_str.split()
-            color = self._normalize_color(parts[0]) if parts else None
+            status_color: Optional[str] = (
+                self._normalize_color(parts[0]) if parts else None
+            )
             bold = "bold" in parts
             italic = "italic" in parts
             dim = "dim" in parts
             styles[f"status.{status.value}"] = Style(
-                color=color, bold=bold, italic=italic, dim=dim
+                color=status_color, bold=bold, italic=italic, dim=dim
             )
 
         # Map EmphasisTokens
@@ -110,7 +112,7 @@ class RichAdapter:
         title: Optional[str] = None,
         box_style: str = "rounded",
         border_category: Optional[CategoryToken] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> RichPanel:
         """Create a themed Rich Panel using our design tokens.
 
@@ -158,7 +160,7 @@ class RichAdapter:
             title_align="left",
             border_style=border_color,
             box=rich_box,
-            **kwargs
+            **kwargs,
         )
 
     def _get_rich_box(self, style_name: str) -> RichBox:
@@ -199,15 +201,14 @@ class RichAdapter:
         Returns:
             Custom Rich Box instance
         """
+
         # Rich expects a specific format for custom boxes
         # This is a simplified version - Rich's Box is more complex
         class CustomBox(RichBox):
             def __init__(self) -> None:
-                self._box = [
-                    f"{box_style.top_left}{box_style.top}{box_style.top_right}",
-                    f"{box_style.left} {box_style.right}",
-                    f"{box_style.bottom_left}{box_style.bottom}{box_style.bottom_right}",
-                ]
+                # Rich expects a specific format for custom boxes
+                # This would need to be implemented properly for custom box support
+                pass
 
         return ROUNDED  # Fallback for now, custom boxes need more work
 
@@ -257,7 +258,10 @@ class RichAdapter:
     def refresh_theme(self) -> None:
         """Refresh console theme after theme change."""
         if self._console:
-            self._console.theme = self._create_rich_theme()
+            # Rich Console doesn't have a mutable theme attribute
+            # We need to recreate the console with the new theme
+            rich_theme = self._create_rich_theme()
+            self._console = Console(theme=rich_theme, legacy_windows=False)
 
 
 # Global adapter instance

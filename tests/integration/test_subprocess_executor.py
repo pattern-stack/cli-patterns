@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -70,7 +69,7 @@ class TestSubprocessExecutorIntegration:
         """Test command with both stdout and stderr."""
         # Use Python to generate both outputs
         result = await executor.run(
-            f"{sys.executable} -c \""
+            f'{sys.executable} -c "'
             "import sys; "
             "sys.stdout.write('Standard output\\n'); "
             "sys.stderr.write('Error output\\n')\""
@@ -173,7 +172,7 @@ class TestSubprocessExecutorIntegration:
 
         # Run a command that outputs multiple lines with delays
         result = await executor.run(
-            f"{sys.executable} -c \""
+            f'{sys.executable} -c "'
             "import time; "
             "print('Line 1', flush=True); "
             "time.sleep(0.1); "
@@ -228,4 +227,3 @@ class TestSubprocessExecutorIntegration:
 
         assert result.success
         assert "Hello World" in result.stdout
-        

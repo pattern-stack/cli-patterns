@@ -40,7 +40,7 @@ class WelcomeScreen:
         panel = rich_adapter.panel(
             Align.center(ascii_art + "\n\n" + info),
             title="Welcome to CLI Patterns",
-            box_style="rounded"
+            box_style="rounded",
         )
 
         self.console.print(panel)
