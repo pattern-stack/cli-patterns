@@ -21,7 +21,7 @@ You are conducting a comprehensive pull request review for the Pattern Stack eco
 
 ## Phase 1: Context Discovery & Analysis
 
-### Step 1.1: Identify the PR
+### Step 1.1: Identify the PR or Recent Work
 $ARGUMENTS
 
 If a PR number was provided, fetch details:
@@ -32,6 +32,16 @@ gh pr view $1
 If no PR specified, find current branch's PR:
 ```bash
 gh pr status
+```
+
+**If no PR exists:** Review recent commits related to the task:
+```bash
+# Identify recent work by examining commit history
+git log --oneline -20
+# Find commits related to specific tickets (e.g., CLI-8)
+git log --grep="CLI-8" --oneline
+# Review the full changeset for the task
+git diff [base-commit]..HEAD --stat
 ```
 
 ### Step 1.2: Understand the Task Context
@@ -58,7 +68,8 @@ Launch a subagent to comprehensively analyze the changes:
 ```
 Task: "Analyze PR changes comprehensively"
 Prompt: "
-1. Use 'gh pr diff [pr-number]' to get the full diff
+1. If PR exists: Use 'gh pr diff [pr-number]' to get the full diff
+   If no PR: Use 'git diff [base-commit]..HEAD' for recent changes
 2. Identify all files changed and categorize them by:
    - Layer (for backend-patterns: atoms/features/molecules/organisms)
    - Component (for cli-patterns: core/execution/ui/parser)
@@ -75,8 +86,12 @@ Subagent: general-purpose
 
 ## Phase 2: Multi-Dimensional Review
 
+**IMPORTANT: Launch all review agents IN PARALLEL for efficiency**
+
+You MUST send a single message with multiple Task tool calls to run all review agents concurrently. This significantly improves review performance.
+
 ### Step 2.1: Architecture Compliance Review
-Launch architecture review agent:
+Launch architecture review agent (in parallel with other agents):
 
 **Task Tool Usage:**
 ```
@@ -107,7 +122,7 @@ Subagent: general-purpose
 ```
 
 ### Step 2.2: Test Coverage & TDD Validation
-Launch test validation agent:
+Launch test validation agent (in parallel with other agents):
 
 **Task Tool Usage:**
 ```
@@ -131,7 +146,7 @@ Subagent: general-purpose
 ```
 
 ### Step 2.3: Code Quality & Standards Review
-Launch code quality agent:
+Launch code quality agent (in parallel with other agents):
 
 **Task Tool Usage:**
 ```
@@ -159,7 +174,7 @@ Subagent: general-purpose
 ```
 
 ### Step 2.4: Pattern Stack Integration Opportunities
-Launch pattern enhancement agent:
+Launch pattern enhancement agent (in parallel with other agents):
 
 **Task Tool Usage:**
 ```
@@ -192,7 +207,19 @@ Subagent: general-purpose
 ```
 
 ### Step 2.5: Security & Performance Review
-Launch security and performance agent:
+Launch security and performance agent (in parallel with other agents):
+
+**Example of launching all agents in parallel:**
+```python
+# Send ONE message with MULTIPLE Task tool calls:
+assistant: I'll launch all review agents in parallel to comprehensively analyze the code.
+
+[Task 1: Architecture Compliance]
+[Task 2: Test Coverage & TDD]
+[Task 3: Code Quality]
+[Task 4: Pattern Stack Opportunities]
+[Task 5: Security & Performance]
+```
 
 **Task Tool Usage:**
 ```
