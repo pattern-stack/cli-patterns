@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -19,10 +19,21 @@ from prompt_toolkit.styles import Style as PromptStyle
 from rich.table import Table
 
 from ..config.theme_loader import initialize_themes
+from ..execution.subprocess_executor import SubprocessExecutor
 from .design.components import Prompt as PromptComponent
 from .design.icons import get_icon_set
 from .design.registry import theme_registry
 from .design.tokens import CategoryToken, StatusToken
+from .parser import (
+    CommandMetadata,
+    CommandRegistry,
+    Context,
+    ParseError,
+    ParseResult,
+    ParserPipeline,
+    ShellParser,
+    TextParser,
+)
 from .rich_adapter import rich_adapter
 
 
@@ -37,20 +48,32 @@ class InteractiveShell:
         # Setup Rich console for output
         self.console = rich_adapter.create_console()
 
-        # Command registry
-        self.commands: dict[str, Callable] = {}
+        # Legacy command registry for backward compatibility
+        self.commands: dict[str, Callable[..., Any]] = {}
         self._setup_builtin_commands()
+
+        # New parser system
+        self.parser_pipeline = ParserPipeline()
+        self.parser_pipeline.add_parser(
+            ShellParser(), priority=10
+        )  # Higher priority for shell commands
+        self.parser_pipeline.add_parser(TextParser(), priority=5)
+        self.context = Context(mode="interactive")
+        self.command_registry = CommandRegistry()
+
+        # Register builtin commands in new registry
+        self._register_builtin_commands()
 
         # Prompt configuration
         self.prompt_component = PromptComponent()
         self.icons = get_icon_set(["unicode", "ascii"])
 
         # Session will be created when running
-        self.session: Optional[PromptSession] = None
+        self.session: Optional[PromptSession[str]] = None
         self.running = False
 
     def _setup_builtin_commands(self) -> None:
-        """Register built-in shell commands."""
+        """Register built-in shell commands (legacy)."""
         self.commands = {
             "help": self.cmd_help,
             "exit": self.cmd_exit,
@@ -58,7 +81,39 @@ class InteractiveShell:
             "echo": self.cmd_echo,
             "theme": self.cmd_theme,
             "coverage": self.cmd_coverage,
+            "test-parser": self.cmd_test_parser,
         }
+
+    def _register_builtin_commands(self) -> None:
+        """Register built-in commands in the new command registry."""
+        command_data = [
+            ("help", "Show this help message", [], self.cmd_help),
+            ("exit", "Exit the shell", ["quit"], self.cmd_exit),
+            ("echo", "Echo text with theme styling", [], self.cmd_echo_parsed),
+            ("theme", "Switch theme (dark/light)", [], self.cmd_theme_parsed),
+            ("coverage", "Show Rich component theming coverage", [], self.cmd_coverage),
+            (
+                "test-parser",
+                "Test parser functionality with debug output",
+                [],
+                self.cmd_test_parser,
+            ),
+        ]
+
+        for name, description, aliases, handler in command_data:
+            try:
+                self.command_registry.register(
+                    CommandMetadata(
+                        name=name,
+                        description=description,
+                        aliases=aliases,
+                        category="builtin",
+                        handler=handler,  # type: ignore[arg-type]
+                    )
+                )
+            except ValueError as e:
+                # Log but don't fail if there are conflicts
+                print(f"Warning: Could not register command {name}: {e}")
 
     def _create_prompt_style(self) -> PromptStyle:
         """Create prompt_toolkit style from our theme tokens.
@@ -71,9 +126,13 @@ class InteractiveShell:
         # Build style dictionary for prompt_toolkit
         style_dict = {
             # Prompt symbol
-            "prompt": self._normalize_color(theme_registry.resolve(self.prompt_component.category)),
+            "prompt": self._normalize_color(
+                theme_registry.resolve(self.prompt_component.category)
+            ),
             # Error messages
-            "error": self._normalize_color(theme_registry.resolve(self.prompt_component.error_status)),
+            "error": self._normalize_color(
+                theme_registry.resolve(self.prompt_component.error_status)
+            ),
             # Input text
             "": "default",
         }
@@ -120,7 +179,7 @@ class InteractiveShell:
         """
         # prompt_color = theme_registry.resolve(self.prompt_component.category)  # For future use
         symbol = self.prompt_component.symbol
-        return HTML(f'<prompt>{symbol}</prompt> ')
+        return HTML(f"<prompt>{symbol}</prompt> ")
 
     async def run(self) -> None:
         """Run the interactive shell asynchronously."""
@@ -129,10 +188,19 @@ class InteractiveShell:
         # Show welcome screen
         await self._show_welcome()
 
+        # Get all command names and aliases for completion
+        completion_words = list(self.commands.keys())
+        for cmd in self.command_registry.list_commands():
+            completion_words.append(cmd.name)
+            completion_words.extend(cmd.aliases or [])
+
+        # Remove duplicates while preserving order
+        completion_words = list(dict.fromkeys(completion_words))
+
         # Create prompt session with theme
-        self.session = PromptSession(
+        self.session = PromptSession[str](
             style=self._create_prompt_style(),
-            completer=WordCompleter(list(self.commands.keys())),
+            completer=WordCompleter(completion_words),
             history=FileHistory(".cli_patterns_history"),
         )
 
@@ -140,9 +208,7 @@ class InteractiveShell:
         while self.running:
             try:
                 # Get user input
-                user_input = await self.session.prompt_async(
-                    self._get_prompt_message()
-                )
+                user_input = await self.session.prompt_async(self._get_prompt_message())
 
                 # Process command
                 await self._process_command(user_input.strip())
@@ -158,11 +224,12 @@ class InteractiveShell:
         """Display the welcome screen."""
         # Defer to welcome screen module
         from .screens.welcome import WelcomeScreen
+
         welcome = WelcomeScreen(self.console, theme_registry.get_current().name)
         welcome.display()
 
     async def _process_command(self, user_input: str) -> None:
-        """Process a user command.
+        """Process a user command using the new parser system.
 
         Args:
             user_input: The raw input from the user
@@ -170,23 +237,77 @@ class InteractiveShell:
         if not user_input:
             return
 
-        # Parse command and arguments
-        parts = user_input.split(maxsplit=1)
-        command = parts[0].lower()
-        args = parts[1] if len(parts) > 1 else ""
+        try:
+            # Parse the input using the parser pipeline
+            result = self.parser_pipeline.parse(user_input, self.context)
 
-        # Execute command
-        if command in self.commands:
-            try:
-                result = self.commands[command](args)
-                # Handle async commands
-                if asyncio.iscoroutine(result):
-                    await result
-            except Exception as e:
-                self.console.print(f"[status.error]Command failed: {e}[/status.error]")
-        else:
-            self.console.print(f"[status.warning]Unknown command: {command}[/status.warning]")
-            self.console.print("[dim]Type 'help' for available commands[/dim]")
+            # Add to command history
+            self.context.add_to_history(user_input)
+
+            if result.command == "!":
+                # Execute shell command via SubprocessExecutor
+                if result.shell_command:
+                    executor = SubprocessExecutor(self.console)
+                    await executor.run(result.shell_command)
+                else:
+                    self.console.print(
+                        "[status.warning]No shell command provided[/status.warning]"
+                    )
+            else:
+                # Look up command in new registry first
+                cmd_meta = self.command_registry.get(result.command)
+                if cmd_meta and cmd_meta.handler:
+                    try:
+                        # Call handler with parsed result
+                        cmd_result = cmd_meta.handler(result)
+                        # Handle async commands
+                        if asyncio.iscoroutine(cmd_result):
+                            await cmd_result
+                    except Exception as e:
+                        self.console.print(
+                            f"[status.error]Command failed: {e}[/status.error]"
+                        )
+
+                # Fallback to legacy command handling
+                elif result.command in self.commands:
+                    try:
+                        # Convert parsed args back to string for legacy handlers
+                        args_str = " ".join(result.args) if result.args else ""
+                        cmd_result = self.commands[result.command](args_str)
+                        # Handle async commands
+                        if asyncio.iscoroutine(cmd_result):
+                            await cmd_result
+                    except Exception as e:
+                        self.console.print(
+                            f"[status.error]Command failed: {e}[/status.error]"
+                        )
+
+                else:
+                    # Show suggestions for unknown commands
+                    suggestions = self.command_registry.get_suggestions(result.command)
+                    if suggestions:
+                        self.console.print(
+                            f"[status.warning]Unknown command: {result.command}[/status.warning]"
+                        )
+                        self.console.print(
+                            f"[dim]Did you mean: {', '.join(suggestions[:3])}?[/dim]"
+                        )
+                    else:
+                        self.console.print(
+                            f"[status.warning]Unknown command: {result.command}[/status.warning]"
+                        )
+                        self.console.print(
+                            "[dim]Type 'help' for available commands[/dim]"
+                        )
+
+        except ParseError as e:
+            self.console.print(f"[status.error]Parse error: {e.message}[/status.error]")
+            if e.suggestions:
+                self.console.print(
+                    f"[dim]Suggestions: {', '.join(e.suggestions)}[/dim]"
+                )
+        except Exception as e:
+            self.console.print(f"[status.error]Unexpected error: {e}[/status.error]")
 
     def cmd_help(self, args: str) -> None:
         """Display help information.
@@ -275,9 +396,13 @@ class InteractiveShell:
             if self.session:
                 self.session.style = self._create_prompt_style()
 
-            self.console.print(f"[status.success]✓ Switched to '{theme_name}' theme[/status.success]")
+            self.console.print(
+                f"[status.success]✓ Switched to '{theme_name}' theme[/status.success]"
+            )
         except KeyError:
-            self.console.print(f"[status.error]Theme '{theme_name}' not found[/status.error]")
+            self.console.print(
+                f"[status.error]Theme '{theme_name}' not found[/status.error]"
+            )
             available = theme_registry.list_themes()
             self.console.print(f"[dim]Available themes: {', '.join(available)}[/dim]")
 
@@ -309,6 +434,139 @@ class InteractiveShell:
             self.console.print("\n[cat.cat_6]Unthemed components:[/cat.cat_6]")
             for comp in coverage["unthemed_components"]:
                 self.console.print(f"  • {comp}")
+
+    def cmd_echo_parsed(self, parse_result: ParseResult) -> None:
+        """Echo text with theme styling using parsed arguments.
+
+        Args:
+            parse_result: ParseResult from the parser system
+        """
+        if not parse_result.args:
+            self.console.print("[status.warning]Usage: echo <text>[/status.warning]")
+            return
+
+        # Demonstrate different styling options
+        words = parse_result.args
+        styled_parts = []
+        categories = list(CategoryToken)
+
+        for i, word in enumerate(words):
+            cat = categories[i % len(categories)]
+            color = theme_registry.resolve(cat)
+            styled_parts.append(f"[{color}]{word}[/{color}]")
+
+        self.console.print(" ".join(styled_parts))
+
+    def cmd_theme_parsed(self, parse_result: ParseResult) -> None:
+        """Switch the current theme using parsed arguments.
+
+        Args:
+            parse_result: ParseResult from the parser system
+        """
+        if not parse_result.args:
+            # Show current theme and available themes
+            current = theme_registry.get_current().name
+            available = theme_registry.list_themes()
+
+            self.console.print(f"[status.info]Current theme: {current}[/status.info]")
+            self.console.print(f"[dim]Available themes: {', '.join(available)}[/dim]")
+            return
+
+        theme_name = parse_result.args[0].strip().lower()
+
+        try:
+            # Switch theme
+            theme_registry.set_current(theme_name)
+
+            # Refresh Rich console theme
+            rich_adapter.refresh_theme()
+            self.console = rich_adapter.create_console()
+
+            # Update prompt session style
+            if self.session:
+                self.session.style = self._create_prompt_style()
+
+            self.console.print(
+                f"[status.success]✓ Switched to '{theme_name}' theme[/status.success]"
+            )
+        except KeyError:
+            self.console.print(
+                f"[status.error]Theme '{theme_name}' not found[/status.error]"
+            )
+            available = theme_registry.list_themes()
+            self.console.print(f"[dim]Available themes: {', '.join(available)}[/dim]")
+
+    def cmd_test_parser(
+        self, parse_result: Union[ParseResult, str, None] = None
+    ) -> None:
+        """Test parser functionality with debug output.
+
+        Args:
+            parse_result: ParseResult from the parser system (for new style) or string for legacy
+        """
+        if isinstance(parse_result, str):
+            # Legacy mode - convert to simple test
+            test_input = parse_result.strip() if parse_result else "help --verbose -f"
+        else:
+            # New mode - use the parse result itself or a default test
+            if parse_result and parse_result.args:
+                test_input = " ".join(parse_result.args)
+            else:
+                test_input = "help --verbose -f"
+
+        self.console.print(
+            f"[cat.cat_1]Testing parser with input:[/cat.cat_1] '{test_input}'"
+        )
+
+        try:
+            # Parse the test input
+            result = self.parser_pipeline.parse(test_input, self.context)
+
+            # Display parsing results
+            table = Table(
+                title="Parser Debug Output", show_header=True, header_style="bold"
+            )
+            table.add_column("Field", style="cat.cat_2")
+            table.add_column("Value", style="cat.cat_7")
+
+            table.add_row("Command", result.command)
+            table.add_row("Arguments", str(result.args))
+            table.add_row("Flags", str(sorted(result.flags)))
+            table.add_row("Options", str(dict(result.options)))
+            table.add_row("Raw Input", result.raw_input)
+
+            if result.shell_command:
+                table.add_row("Shell Command", result.shell_command)
+
+            self.console.print(table)
+
+            # Show command registry lookup
+            cmd_meta = self.command_registry.get(result.command)
+            if cmd_meta:
+                self.console.print(
+                    "\n[cat.cat_3]Command found in registry:[/cat.cat_3]"
+                )
+                self.console.print(f"  Name: {cmd_meta.name}")
+                self.console.print(f"  Description: {cmd_meta.description}")
+                if cmd_meta.aliases:
+                    self.console.print(f"  Aliases: {', '.join(cmd_meta.aliases)}")
+                self.console.print(f"  Category: {cmd_meta.category}")
+            else:
+                suggestions = self.command_registry.get_suggestions(result.command)
+                if suggestions:
+                    self.console.print(
+                        "\n[cat.cat_6]Command not found. Suggestions:[/cat.cat_6]"
+                    )
+                    self.console.print(f"  {', '.join(suggestions[:5])}")
+
+        except ParseError as e:
+            self.console.print(f"[status.error]Parse Error:[/status.error] {e.message}")
+            if e.suggestions:
+                self.console.print(
+                    f"[dim]Suggestions: {', '.join(e.suggestions)}[/dim]"
+                )
+        except Exception as e:
+            self.console.print(f"[status.error]Unexpected Error:[/status.error] {e}")
 
 
 def run_shell() -> None:
