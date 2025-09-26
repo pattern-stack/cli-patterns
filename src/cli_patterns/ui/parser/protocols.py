@@ -56,4 +56,5 @@ class Parser(Protocol):
         ...
 
 
-# Ensure runtime_checkable attribute is available for tests
+# Explicitly set the runtime checkable attribute for older Python versions
+Parser.__runtime_checkable__ = True
