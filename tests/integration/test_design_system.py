@@ -4,11 +4,10 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
 import yaml
 
-from cli_patterns.config.theme_loader import (
-    load_theme_from_yaml,
-)
+from cli_patterns.config.theme_loader import load_theme_from_yaml
 from cli_patterns.ui.design.boxes import BOX_STYLES, BoxStyle
 from cli_patterns.ui.design.components import Output, Panel, ProgressBar, Prompt
 from cli_patterns.ui.design.icons import get_icon_set
@@ -21,6 +20,8 @@ from cli_patterns.ui.design.tokens import (
     HierarchyToken,
     StatusToken,
 )
+
+pytestmark = pytest.mark.design
 
 
 class TestDesignSystemIntegration:
