@@ -7,6 +7,8 @@ import pytest
 from cli_patterns.ui.parser.parsers import ShellParser
 from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
 
+pytestmark = pytest.mark.parser
+
 
 class TestShellParserBasics:
     """Test basic ShellParser functionality."""
