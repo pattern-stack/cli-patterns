@@ -101,6 +101,16 @@ addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
+markers = [
+    "unit: Unit tests (tests/unit/)",
+    "integration: Integration tests (tests/integration/)",
+    "slow: Tests taking longer than 0.5 seconds",
+    "parser: Parser component tests",
+    "executor: Executor/execution component tests",
+    "design: Design system tests",
+    "ui: UI component tests",
+    "asyncio: Async tests (already in use)"
+]
 
 [dependency-groups]
 dev = [
