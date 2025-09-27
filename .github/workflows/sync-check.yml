@@ -26,7 +26,7 @@ jobs:
       - name: Get Docker environment
         run: |
           docker compose -f docker-compose.ci.yml run ci \
-            sh -c "uv pip freeze | sort" > /tmp/docker-deps.txt
+            sh -c "pip freeze | sort" > /tmp/docker-deps.txt
           docker compose -f docker-compose.ci.yml run ci \
             python --version > /tmp/docker-version.txt
 
