@@ -176,3 +176,8 @@ Desktop.ini
 *.swp
 *.swo
 *~.cli_patterns_history
+
+# CI artifacts
+/tmp/
+benchmark_results.json
+# .docker/  # Commented out to allow CI entrypoint script
