@@ -10,6 +10,8 @@ from cli_patterns.ui.parser.pipeline import ParserPipeline
 from cli_patterns.ui.parser.protocols import Parser
 from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
 
+pytestmark = pytest.mark.parser
+
 
 class TestParserPipeline:
     """Test ParserPipeline basic functionality."""
