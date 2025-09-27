@@ -1,7 +1,7 @@
 # CLI Patterns Makefile
 # Development and testing automation
 
-.PHONY: help install test test-unit test-integration test-coverage test-parser test-executor test-design test-fast test-components lint type-check format clean all
+.PHONY: help install test test-unit test-integration test-coverage test-parser test-executor test-design test-fast test-components lint type-check format clean clean-docker all quality format-check ci-setup ci-native ci-docker verify-sync benchmark test-all ci-summary
 
 # Default target
 help:
@@ -21,12 +21,18 @@ help:
 	@echo "make type-check    - Run mypy type checking"
 	@echo "make format        - Format code with black"
 	@echo "make clean         - Remove build artifacts and cache"
+	@echo "make clean-docker  - Clean up Docker containers and volumes"
 	@echo "make all           - Run format, lint, type-check, and test"
 
 # Install dependencies
 install:
-	uv sync
-	uv add --dev mypy pytest pytest-asyncio pytest-cov pre-commit black ruff
+	@if command -v uv > /dev/null 2>&1; then \
+		uv sync; \
+		uv add --dev mypy pytest pytest-asyncio pytest-cov pre-commit black ruff; \
+	else \
+		pip install -e .; \
+		pip install mypy pytest pytest-asyncio pytest-cov pre-commit black ruff; \
+	fi
 
 # Run all tests
 test:
@@ -51,7 +57,11 @@ test-file:
 
 # Lint code
 lint:
-	uv run ruff check src/ tests/
+	@if command -v uv > /dev/null 2>&1; then \
+		uv run ruff check src/ tests/; \
+	else \
+		ruff check src/ tests/; \
+	fi
 
 # Type check with mypy
 type-check:
@@ -59,7 +69,11 @@ type-check:
 
 # Format code
 format:
-	uv run black src/ tests/
+	@if command -v uv > /dev/null 2>&1; then \
+		uv run black src/ tests/; \
+	else \
+		black src/ tests/; \
+	fi
 
 # Clean build artifacts
 clean:
@@ -70,6 +84,10 @@ clean:
 	rm -rf htmlcov
 	rm -rf .coverage
 	rm -rf .ruff_cache
+
+# Clean Docker containers and volumes
+clean-docker:
+	docker compose -f docker-compose.ci.yml down --remove-orphans
 
 # Run all quality checks
 all: format lint type-check test
@@ -116,3 +134,60 @@ summary:
 	@PYTHONPATH=src python3 -m pytest tests/integration/ -q 2>/dev/null | tail -1
 	@echo -n "Type Check: "
 	@PYTHONPATH=src python3 -m mypy src/cli_patterns --strict 2>&1 | grep -E "Success|Found" | head -1
+
+# CI-specific targets
+# Combined quality checks
+quality: lint type-check format-check
+
+# Format check (for CI, doesn't modify)
+format-check:
+	@if command -v uv > /dev/null 2>&1; then \
+		uv run black src/ tests/ --check; \
+	else \
+		black src/ tests/ --check; \
+	fi
+
+# Environment info (for sync checking)
+ci-setup:
+	@echo "=== Environment Info ==="
+	@python3 --version
+	@if command -v uv > /dev/null 2>&1; then \
+		uv --version; \
+		echo "=== Dependencies (first 10) ==="; \
+		uv pip list | head -10; \
+	else \
+		pip --version; \
+		echo "=== Dependencies (first 10) ==="; \
+		pip list | head -10; \
+	fi
+
+# Native CI run
+ci-native: quality test-all
+
+# Docker CI run
+ci-docker:
+	docker compose -f docker-compose.ci.yml run --rm ci make ci-native
+
+# Verify environments are in sync
+verify-sync:
+	@echo "Checking native environment..."
+	@make ci-setup > /tmp/native-env.txt
+	@echo "Checking Docker environment..."
+	@docker compose -f docker-compose.ci.yml run ci make ci-setup > /tmp/docker-env.txt
+	@echo "Comparing..."
+	@diff /tmp/native-env.txt /tmp/docker-env.txt && echo "✅ In sync!" || echo "❌ Out of sync!"
+
+# Placeholder for future benchmarks
+benchmark:
+	@echo "Benchmark suite not yet implemented"
+	@echo "Future: pytest tests/ --benchmark-only"
+
+# All tests
+test-all: test-unit test-integration
+
+# Summary for CI
+ci-summary:
+	@echo "=== CI Summary ==="
+	@echo "Quality checks: make quality"
+	@echo "All tests: make test-all"
+	@echo "Component tests: make test-components"
