@@ -614,7 +614,8 @@ class TestParserPipelineAdvancedFeatures:
             and input.strip().endswith(">"),
         )
         pipeline.add_parser(
-            text_parser, lambda input, ctx: True  # Fallback for plain text
+            text_parser,
+            lambda input, ctx: True,  # Fallback for plain text
         )
 
         context = Context("interactive", [], {})
