@@ -21,5 +21,6 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        uv sync --frozen
+        uv sync --frozen --all-extras
+        uv pip install mypy pytest pytest-asyncio pytest-cov black ruff
         echo "✅ Pattern Stack environment ready (Python ${{ inputs.python-version }})"
