@@ -10,13 +10,35 @@ import pytest
 from cli_patterns.ui.parser.protocols import Parser
 from cli_patterns.ui.parser.types import Context, ParseResult
 
+pytestmark = pytest.mark.parser
+
 
 class TestParserProtocol:
     """Test Parser protocol definition and behavior."""
 
     def test_parser_is_runtime_checkable(self) -> None:
-        """Test that Parser protocol is runtime checkable."""
-        assert hasattr(Parser, "__runtime_checkable__")
+        """Test that Parser protocol supports isinstance checks."""
+
+        # Test the actual functionality: isinstance checking should work
+        class ValidImplementation:
+            def can_parse(self, input: str, context: Context) -> bool:
+                return True
+
+            def parse(self, input: str, context: Context) -> ParseResult:
+                return ParseResult("test", [], set(), {}, input)
+
+            def get_suggestions(self, partial: str) -> list[str]:
+                return []
+
+        class InvalidImplementation:
+            pass
+
+        valid = ValidImplementation()
+        invalid = InvalidImplementation()
+
+        # This is what @runtime_checkable actually enables
+        assert isinstance(valid, Parser)
+        assert not isinstance(invalid, Parser)
 
     def test_parser_protocol_methods(self) -> None:
         """Test that Parser protocol has required methods."""
@@ -451,8 +473,19 @@ class TestProtocolDocumentation:
         # Should be identifiable as a Protocol
         assert issubclass(Parser, Protocol)
 
-        # Should have runtime checkable decorator
-        assert getattr(Parser, "__runtime_checkable__", False)
+        # Should support runtime type checking (the actual purpose of @runtime_checkable)
+        class TestImplementation:
+            def can_parse(self, input: str, context: Context) -> bool:
+                return True
+
+            def parse(self, input: str, context: Context) -> ParseResult:
+                return ParseResult("test", [], set(), {}, input)
+
+            def get_suggestions(self, partial: str) -> list[str]:
+                return []
+
+        impl = TestImplementation()
+        assert isinstance(impl, Parser)  # This is what matters, not internal attributes
 
 
 class TestParserProtocolEdgeCases:
