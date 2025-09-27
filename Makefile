@@ -1,7 +1,7 @@
 # CLI Patterns Makefile
 # Development and testing automation
 
-.PHONY: help install test test-unit test-integration test-coverage lint type-check format clean all
+.PHONY: help install test test-unit test-integration test-coverage test-parser test-executor test-design test-fast test-components lint type-check format clean all
 
 # Default target
 help:
@@ -12,6 +12,11 @@ help:
 	@echo "make test-unit     - Run unit tests only"
 	@echo "make test-integration - Run integration tests only"
 	@echo "make test-coverage - Run tests with coverage report"
+	@echo "make test-parser   - Run parser component tests"
+	@echo "make test-executor - Run executor/execution component tests"
+	@echo "make test-design   - Run design system tests"
+	@echo "make test-fast     - Run non-slow tests only"
+	@echo "make test-components - Run all component tests (parser, executor, design)"
 	@echo "make lint          - Run ruff linter"
 	@echo "make type-check    - Run mypy type checking"
 	@echo "make format        - Format code with black"
@@ -84,6 +89,22 @@ pre-commit:
 # Initialize pre-commit
 pre-commit-install:
 	pre-commit install
+
+# Run tests by marker
+test-parser:
+	PYTHONPATH=src python3 -m pytest tests/ -m parser -v
+
+test-executor:
+	PYTHONPATH=src python3 -m pytest tests/ -m executor -v
+
+test-design:
+	PYTHONPATH=src python3 -m pytest tests/ -m design -v
+
+test-fast:
+	PYTHONPATH=src python3 -m pytest tests/ -m "not slow" -v
+
+test-components:
+	PYTHONPATH=src python3 -m pytest tests/ -m "parser or executor or design" -v
 
 # Show test summary
 summary:
