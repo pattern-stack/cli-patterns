@@ -36,19 +36,35 @@ install:
 
 # Run all tests
 test:
-	PYTHONPATH=src python3 -m pytest tests/ -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ -v; \
+	fi
 
 # Run unit tests only
 test-unit:
-	PYTHONPATH=src python3 -m pytest tests/unit/ -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/unit/ -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/unit/ -v; \
+	fi
 
 # Run integration tests only
 test-integration:
-	PYTHONPATH=src python3 -m pytest tests/integration/ -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/integration/ -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/integration/ -v; \
+	fi
 
 # Run tests with coverage
 test-coverage:
-	PYTHONPATH=src python3 -m pytest tests/ --cov=cli_patterns --cov-report=term-missing --cov-report=html
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ --cov=cli_patterns --cov-report=term-missing --cov-report=html; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ --cov=cli_patterns --cov-report=term-missing --cov-report=html; \
+	fi
 
 # Run specific test file
 test-file:
@@ -65,7 +81,11 @@ lint:
 
 # Type check with mypy
 type-check:
-	PYTHONPATH=src python3 -m mypy src/cli_patterns --strict
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run mypy src/cli_patterns --strict; \
+	else \
+		PYTHONPATH=src python3 -m mypy src/cli_patterns --strict; \
+	fi
 
 # Format code
 format:
@@ -94,11 +114,19 @@ all: format lint type-check test
 
 # Quick test for current work
 quick:
-	PYTHONPATH=src python3 -m pytest tests/unit/ui/design/ -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/unit/ui/design/ -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/unit/ui/design/ -v; \
+	fi
 
 # Watch tests (requires pytest-watch)
 watch:
-	PYTHONPATH=src python3 -m pytest-watch tests/ --clear
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest-watch tests/ --clear; \
+	else \
+		PYTHONPATH=src python3 -m pytest-watch tests/ --clear; \
+	fi
 
 # Run pre-commit hooks
 pre-commit:
@@ -110,16 +138,32 @@ pre-commit-install:
 
 # Run tests by marker
 test-parser:
-	PYTHONPATH=src python3 -m pytest tests/ -m parser -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ -m parser -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ -m parser -v; \
+	fi
 
 test-executor:
-	PYTHONPATH=src python3 -m pytest tests/ -m executor -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ -m executor -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ -m executor -v; \
+	fi
 
 test-design:
-	PYTHONPATH=src python3 -m pytest tests/ -m design -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ -m design -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ -m design -v; \
+	fi
 
 test-fast:
-	PYTHONPATH=src python3 -m pytest tests/ -m "not slow" -v
+	@if command -v uv > /dev/null 2>&1; then \
+		PYTHONPATH=src uv run pytest tests/ -m "not slow" -v; \
+	else \
+		PYTHONPATH=src python3 -m pytest tests/ -m "not slow" -v; \
+	fi
 
 test-components:
 	PYTHONPATH=src python3 -m pytest tests/ -m "parser or executor or design" -v
