@@ -23,6 +23,8 @@ from cli_patterns.ui.parser import (
 # Import shell and parser components
 from cli_patterns.ui.shell import InteractiveShell
 
+pytestmark = pytest.mark.parser
+
 
 class TestShellParserIntegration:
     """Integration tests for shell and parser system working together."""
