@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Callable, Optional
 
 # No longer need ParseError import for registry validation
@@ -48,11 +49,25 @@ class CommandRegistry:
     and intelligent suggestions for typos and partial matches.
     """
 
-    def __init__(self) -> None:
-        """Initialize empty command registry."""
+    def __init__(self, cache_size: int = 128) -> None:
+        """Initialize empty command registry.
+
+        Args:
+            cache_size: Maximum number of entries to cache for suggestion lookups.
+                       Set to 0 to disable caching.
+        """
         self._commands: dict[str, CommandMetadata] = {}
         self._aliases: dict[str, str] = {}  # alias -> command_name mapping
         self._categories: set[str] = set()
+
+        # Create cached version of suggestion computation if caching is enabled
+        if cache_size > 0:
+            self._cached_suggestions: Callable[[str, int], list[str]] = lru_cache(
+                maxsize=cache_size
+            )(self._compute_suggestions)
+        else:
+            # No caching - use direct computation
+            self._cached_suggestions = self._compute_suggestions
 
     def register(self, metadata: CommandMetadata) -> None:
         """Register a command with the registry.
@@ -93,6 +108,12 @@ class CommandRegistry:
         # Track category
         self._categories.add(metadata.category)
 
+        # Clear suggestion cache since command set has changed
+        if hasattr(self, "_cached_suggestions") and hasattr(
+            self._cached_suggestions, "cache_clear"
+        ):
+            self._cached_suggestions.cache_clear()
+
     def register_command(self, metadata: CommandMetadata) -> None:
         """Register a command (alias for register method).
 
@@ -127,6 +148,12 @@ class CommandRegistry:
             cmd.category == metadata.category for cmd in self._commands.values()
         ):
             self._categories.discard(metadata.category)
+
+        # Clear suggestion cache since command set has changed
+        if hasattr(self, "_cached_suggestions") and hasattr(
+            self._cached_suggestions, "cache_clear"
+        ):
+            self._cached_suggestions.cache_clear()
 
         return True
 
@@ -209,6 +236,24 @@ class CommandRegistry:
 
     def get_suggestions(self, partial: str, limit: int = 5) -> list[str]:
         """Get command name suggestions based on partial input.
+
+        Uses an LRU cache to improve performance for repeated lookups.
+        Cache is automatically cleared when commands are registered/unregistered.
+
+        Args:
+            partial: Partial command name
+            limit: Maximum number of suggestions to return
+
+        Returns:
+            List of suggested command names
+        """
+        return self._cached_suggestions(partial, limit)
+
+    def _compute_suggestions(self, partial: str, limit: int) -> list[str]:
+        """Compute command name suggestions based on partial input.
+
+        This is the internal method that performs the actual suggestion computation.
+        It is wrapped with an LRU cache for performance.
 
         Args:
             partial: Partial command name
