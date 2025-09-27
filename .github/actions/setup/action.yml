@@ -1,0 +1,16 @@
+name: Setup Environment
+description: Setup cli-patterns environment
+
+inputs:
+  python-version:
+    description: Python version
+    default: '3.9'
+
+runs:
+  using: composite
+  steps:
+    # In future, this would be: pattern-stack/actions/setup@v1
+    # For now, use local pattern-stack standard
+    - uses: ./.github/workflows/pattern-stack/setup
+      with:
+        python-version: ${{ inputs.python-version }}
