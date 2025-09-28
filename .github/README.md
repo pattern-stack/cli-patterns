@@ -1,84 +1,106 @@
-# GitHub Actions Workflows
+# GitHub Actions CI/CD
 
-This directory contains CI/CD workflows for the geography-patterns monorepo.
+This directory contains CI/CD workflows for the CLI Patterns framework.
 
 ## Workflow Structure
 
-### Per-Project Testing
-- **`test-wof-explorer.yml`** - Tests for WOF Explorer package
-- **`test-geo-platform.yml`** - Tests for Geo Platform package
+### Main CI Pipeline (`ci.yml`)
+The primary CI workflow that orchestrates all quality checks and tests.
 
-### Quality Checks
-- **`quality-checks.yml`** - Linting, type checking, and formatting checks across both packages
+**Triggers:**
+- Push to `main` or `develop` branches
+- All pull requests
+- Manual workflow dispatch with optional Docker mode
 
-### Orchestration
-- **`ci.yml`** - Main CI workflow that runs all checks together
+**Jobs:**
+- **Quality Checks**: Linting, type checking, and formatting verification
+- **Test Suites**: Parallel execution of unit, integration, and component tests
+- **Fast Tests**: Quick smoke tests for rapid feedback
+- **Python Compatibility**: Tests against multiple Python versions (main branch only)
+- **Benchmarks**: Performance benchmarking placeholder (main branch only)
 
-## Workflow Details
+### Claude Integration (`claude.yml`)
+GitHub App integration for Claude Code assistant.
 
-### Test WOF Explorer (`test-wof-explorer.yml`)
-- **Triggers**: Changes to `wof-explorer/` directory, workflow file, or dependencies
-- **Python versions**: 3.11, 3.12, 3.13
-- **Test database**: Downloads Barbados WOF database for integration tests
-- **Commands**:
-  - `uv run pytest tests/ -v`
-  - `uv run pytest tests/test_examples.py -v`
+**Features:**
+- Automated PR reviews and assistance
+- Issue refinement and implementation
+- TDD-driven development support
 
-### Test Geo Platform (`test-geo-platform.yml`)
-- **Triggers**: Changes to `geo-platform/` directory, workflow file, or dependencies
-- **Python versions**: 3.11, 3.12, 3.13
-- **Services**: PostgreSQL with PostGIS extension
-- **Commands**:
-  - `uv run pytest __tests__/unit/ -v`
-  - `uv run pytest __tests__/integration/ -v`
-  - `uv run pytest __tests__/ -v`
+### Local Actions (`actions/`)
+Reusable action components following Pattern Stack standards.
 
-### Quality Checks (`quality-checks.yml`)
-- **Triggers**: All pushes and PRs
-- **Matrix**: Runs for both `wof-explorer` and `geo-platform`
-- **Jobs**:
-  - **Lint**: `uv run ruff check .`
-  - **Typecheck**: `uv run mypy src/`
-  - **Format Check**: `uv run ruff format --check .` (+ black for WOF Explorer)
+**Setup Action** (`actions/setup/action.yml`):
+- Python environment configuration with `uv`
+- Dependency caching
+- Development tools installation
 
-### Main CI (`ci.yml`)
-- **Triggers**: Pushes to main/develop branches, all PRs
-- **Strategy**: Orchestrates all other workflows
-- **Final check**: Ensures all sub-workflows pass before marking CI as successful
+## Test Organization
+
+Tests are organized by markers and components:
+
+| Test Suite | Description | Command |
+|------------|-------------|---------|
+| `unit` | Unit tests for individual components | `make test-unit` |
+| `integration` | Integration tests for component interactions | `make test-integration` |
+| `parser` | Parser and CLI registry tests | `make test-parser` |
+| `executor` | Execution engine tests | `make test-executor` |
+| `design` | Design system and theming tests | `make test-design` |
+| `fast` | Quick tests (excludes slow-marked tests) | `make test-fast` |
+
+## Execution Modes
+
+### Native Execution (Default)
+Runs directly on GitHub-hosted runners using the setup action.
+
+### Docker Execution (Optional)
+Containerized execution for consistent environments:
+- Triggered via workflow dispatch with `use_docker: true`
+- Uses `docker-compose.ci.yml` configuration
+- Ensures reproducible builds across environments
 
 ## Quality Standards
 
-### Expected Results
-- **Geo Platform**: All checks should pass (0 linting issues, 0 type issues)
-- **WOF Explorer**: Known issues documented (41 linting issues, 343 type issues)
-
-### Failure Handling
-- Geo Platform failures block CI
-- WOF Explorer quality issues are documented but don't block CI (`continue-on-error: true`)
-- Test failures always block CI for both packages
+All code must pass:
+- **Ruff**: Linting and formatting checks
+- **MyPy**: Strict type checking
+- **Black**: Code formatting (secondary formatter)
+- **Tests**: All test suites must pass
 
 ## Local Development
 
-Run the same checks locally using Make commands:
+Run the same CI checks locally:
 
 ```bash
-# Run all checks
-make check
+# Install dependencies
+make install
 
-# Per-package testing
-make test-wof
-make test-geo
+# Run all quality checks
+make quality
 
-# Quality checks
-make lint
-make typecheck
+# Run all tests
+make test
+
+# Run specific test suites
+make test-unit
+make test-integration
+make test-parser
+
+# Run with coverage
+make test-coverage
+
+# Format code
 make format
 ```
 
-## Path-Based Triggers
+## Python Version Support
 
-Workflows are optimized to only run when relevant files change:
+The project officially supports Python 3.9 through 3.12, with compatibility testing across versions on the main branch.
 
-- Package-specific workflows only trigger on changes to their respective directories
-- Quality checks run on all changes
-- Dependencies changes (pyproject.toml, uv.lock) trigger relevant workflows
+## Pattern Stack Standards
+
+This CI configuration follows Pattern Stack organizational standards:
+- Hierarchical action structure for future organization-wide sharing
+- Consistent naming conventions
+- Docker-first optional execution
+- Comprehensive test coverage requirements
