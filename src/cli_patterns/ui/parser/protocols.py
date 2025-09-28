@@ -54,7 +54,3 @@ class Parser(Protocol):
             List of suggested completions for the partial input
         """
         ...
-
-
-# Explicitly set the runtime checkable attribute for older Python versions
-Parser.__runtime_checkable__ = True
