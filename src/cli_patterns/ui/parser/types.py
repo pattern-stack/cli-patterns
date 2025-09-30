@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from rich.console import Group, RenderableType
 from rich.text import Text
 
+from cli_patterns.ui.design.registry import theme_registry
 from cli_patterns.ui.design.tokens import HierarchyToken, StatusToken
 
 if TYPE_CHECKING:
@@ -92,6 +93,9 @@ class CommandArgs:
 class ParseError(Exception):
     """Exception raised during command parsing.
 
+    This class implements the Rich __rich__() protocol for automatic themed display
+    when printed to a Rich console. Use console.print(error) for best results.
+
     Attributes:
         message: Human-readable error message
         error_type: Type of parsing error
@@ -123,16 +127,19 @@ class ParseError(Exception):
     def __rich__(self) -> RenderableType:
         """Rich rendering protocol implementation for automatic themed display.
 
+        Uses the global theme_registry to resolve design tokens to themed styles,
+        ensuring consistency with the application's design system.
+
         Returns:
             RenderableType (Group) containing styled error message and suggestions
         """
         # Map error_type to StatusToken
         status_token = self._get_status_token()
 
-        # Create styled error message
+        # Create styled error message using theme registry
         error_text = Text()
         error_text.append(
-            f"{self.error_type}: ", style=self._get_status_style(status_token)
+            f"{self.error_type}: ", style=theme_registry.resolve(status_token)
         )
         error_text.append(self.message)
 
@@ -140,9 +147,9 @@ class ParseError(Exception):
         renderables: list[RenderableType] = [error_text]
 
         if self.suggestions:
-            # Add "Did you mean:" prompt
+            # Add "Did you mean:" prompt using theme registry
             prompt_text = Text(
-                "\n\nDid you mean:", style=self._get_status_style(StatusToken.INFO)
+                "\n\nDid you mean:", style=theme_registry.resolve(StatusToken.INFO)
             )
             renderables.append(prompt_text)
 
@@ -151,7 +158,7 @@ class ParseError(Exception):
                 hierarchy = self._get_suggestion_hierarchy(idx)
                 suggestion_text = Text()
                 suggestion_text.append(
-                    f"\n  • {suggestion}", style=self._get_hierarchy_style(hierarchy)
+                    f"\n  • {suggestion}", style=theme_registry.resolve(hierarchy)
                 )
                 renderables.append(suggestion_text)
 
@@ -185,6 +192,9 @@ class ParseError(Exception):
     def _get_suggestion_hierarchy(self, index: int) -> HierarchyToken:
         """Get hierarchy token for suggestion based on ranking.
 
+        The first suggestion is PRIMARY (best match), second is SECONDARY (good match),
+        and third is TERTIARY (possible match).
+
         Args:
             index: Position in suggestions list (0-based)
 
@@ -197,50 +207,6 @@ class ParseError(Exception):
             return HierarchyToken.SECONDARY  # Good match
         else:
             return HierarchyToken.TERTIARY  # Possible match
-
-    def _get_status_style(self, status: StatusToken) -> str:
-        """Get Rich style string for StatusToken.
-
-        Args:
-            status: StatusToken to convert to style
-
-        Returns:
-            Rich style string
-        """
-        if status == StatusToken.ERROR:
-            return "bold red"
-        elif status == StatusToken.WARNING:
-            return "bold yellow"
-        elif status == StatusToken.INFO:
-            return "blue"
-        elif status == StatusToken.SUCCESS:
-            return "bold green"
-        elif status == StatusToken.RUNNING:
-            return "cyan"
-        elif status == StatusToken.MUTED:
-            return "dim"
-        else:
-            return "default"
-
-    def _get_hierarchy_style(self, hierarchy: HierarchyToken) -> str:
-        """Get Rich style string for HierarchyToken.
-
-        Args:
-            hierarchy: HierarchyToken to convert to style
-
-        Returns:
-            Rich style string
-        """
-        if hierarchy == HierarchyToken.PRIMARY:
-            return "bold"
-        elif hierarchy == HierarchyToken.SECONDARY:
-            return "default"
-        elif hierarchy == HierarchyToken.TERTIARY:
-            return "dim"
-        elif hierarchy == HierarchyToken.QUATERNARY:
-            return "dim italic"
-        else:
-            return "default"
 
 
 @dataclass

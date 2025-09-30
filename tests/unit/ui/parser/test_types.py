@@ -722,35 +722,63 @@ class TestParseErrorRichRendering:
         hierarchy = error._get_suggestion_hierarchy(2)
         assert hierarchy == HierarchyToken.TERTIARY
 
-    def test_status_style_error(self) -> None:
-        """Test ERROR status maps to correct style."""
-        error = ParseError("TEST", "Test", [])
-        style = error._get_status_style(StatusToken.ERROR)
-        assert "red" in style
+    def test_theme_registry_integration_status_tokens(self) -> None:
+        """Test that __rich__() uses theme_registry for StatusToken styling."""
+        from cli_patterns.ui.design.registry import theme_registry
 
-    def test_status_style_warning(self) -> None:
-        """Test WARNING status maps to correct style."""
-        error = ParseError("TEST", "Test", [])
-        style = error._get_status_style(StatusToken.WARNING)
-        assert "yellow" in style
+        error = ParseError(
+            error_type="SYNTAX_ERROR",
+            message="Test theme integration",
+            suggestions=[],
+        )
 
-    def test_status_style_info(self) -> None:
-        """Test INFO status maps to correct style."""
-        error = ParseError("TEST", "Test", [])
-        style = error._get_status_style(StatusToken.INFO)
-        assert "blue" in style
+        # Get the status token and verify it can be resolved
+        status = error._get_status_token()
+        style = theme_registry.resolve(status)
 
-    def test_hierarchy_style_primary(self) -> None:
-        """Test PRIMARY hierarchy maps to bold style."""
-        error = ParseError("TEST", "Test", [])
-        style = error._get_hierarchy_style(HierarchyToken.PRIMARY)
-        assert "bold" in style
+        # Verify theme registry returns a valid style string
+        assert isinstance(style, str)
+        assert len(style) > 0
 
-    def test_hierarchy_style_tertiary(self) -> None:
-        """Test TERTIARY hierarchy maps to dim style."""
-        error = ParseError("TEST", "Test", [])
-        style = error._get_hierarchy_style(HierarchyToken.TERTIARY)
-        assert "dim" in style
+    def test_theme_registry_integration_hierarchy_tokens(self) -> None:
+        """Test that __rich__() uses theme_registry for HierarchyToken styling."""
+        from cli_patterns.ui.design.registry import theme_registry
+
+        error = ParseError(
+            error_type="TEST",
+            message="Test hierarchy styling",
+            suggestions=["First", "Second", "Third"],
+        )
+
+        # Get hierarchy tokens and verify they can be resolved
+        for idx in range(3):
+            hierarchy = error._get_suggestion_hierarchy(idx)
+            style = theme_registry.resolve(hierarchy)
+
+            # Verify theme registry returns a valid style string
+            assert isinstance(style, str)
+            assert len(style) > 0
+
+    def test_theme_registry_integration_in_rich_output(self) -> None:
+        """Test that Rich rendering uses theme_registry resolved styles."""
+        error = ParseError(
+            error_type="THEME_TEST",
+            message="Testing theme registry integration",
+            suggestions=["Suggestion 1"],
+        )
+
+        # Render with Rich
+        result = error.__rich__()
+        assert isinstance(result, Group)
+
+        # Verify the error can be printed (theme resolution doesn't throw)
+        console = Console()
+        with console.capture() as capture:
+            console.print(error)
+        output = capture.get()
+
+        assert "THEME_TEST" in output
+        assert "Testing theme registry integration" in output
 
     def test_rich_rendering_with_console_print(self) -> None:
         """Test that ParseError can be directly printed to Rich console."""
