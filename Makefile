@@ -1,7 +1,7 @@
 # CLI Patterns Makefile
 # Development and testing automation
 
-.PHONY: help install test test-unit test-integration test-coverage test-parser test-executor test-design test-fast test-components lint type-check format clean clean-docker all quality format-check ci-setup ci-native ci-docker verify-sync benchmark test-all ci-summary
+.PHONY: help install test test-unit test-integration test-coverage test-parser test-executor test-design test-fast test-components lint lint-fix type-check format clean clean-docker all quality format-check ci-setup ci-native ci-docker verify-sync benchmark test-all ci-summary
 
 # Default target
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "make test-fast     - Run non-slow tests only"
 	@echo "make test-components - Run all component tests (parser, executor, design)"
 	@echo "make lint          - Run ruff linter"
+	@echo "make lint-fix      - Run ruff linter and auto-fix issues"
 	@echo "make type-check    - Run mypy type checking"
 	@echo "make format        - Format code with black"
 	@echo "make clean         - Remove build artifacts and cache"
@@ -77,6 +78,14 @@ lint:
 		uv run ruff check src/ tests/; \
 	else \
 		ruff check src/ tests/; \
+	fi
+
+# Lint code and auto-fix issues
+lint-fix:
+	@if command -v uv > /dev/null 2>&1; then \
+		uv run ruff check src/ tests/ --fix; \
+	else \
+		ruff check src/ tests/ --fix; \
 	fi
 
 # Type check with mypy
