@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass
@@ -88,6 +91,7 @@ class ParseError(Exception):
         message: Human-readable error message
         error_type: Type of parsing error
         suggestions: List of suggested corrections
+        display_metadata: Optional display metadata for enhanced formatting
     """
 
     def __init__(
@@ -104,6 +108,8 @@ class ParseError(Exception):
         self.error_type = error_type
         self.message = message
         self.suggestions = suggestions or []
+        # display_metadata is optional and can be set after creation
+        # This maintains backward compatibility while enabling enhanced formatting
 
     def __str__(self) -> str:
         """String representation of the error."""
