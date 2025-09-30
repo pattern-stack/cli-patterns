@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from rich.console import Console, Group
 
 from cli_patterns.ui.design.tokens import (
     CategoryToken,
     DisplayMetadata,
     EmphasisToken,
     HierarchyToken,
+    StatusToken,
 )
 from cli_patterns.ui.parser.types import (
     CommandArgs,
@@ -543,6 +545,306 @@ class TestParseError:
         # Metadata should be preserved as object attribute
         assert error.display_metadata.category == CategoryToken.CAT_2
         assert error.display_metadata.hierarchy == HierarchyToken.SECONDARY
+
+
+class TestParseErrorRichRendering:
+    """Test ParseError's Rich protocol implementation (__rich__ method)."""
+
+    def test_rich_method_returns_group(self) -> None:
+        """Test that __rich__() returns a Rich Group."""
+        error = ParseError(
+            error_type="TEST_ERROR",
+            message="Test error message",
+            suggestions=["Suggestion 1"],
+        )
+
+        result = error.__rich__()
+        assert isinstance(result, Group)
+
+    def test_rich_rendering_without_suggestions(self) -> None:
+        """Test Rich rendering of error without suggestions."""
+        error = ParseError(
+            error_type="NO_SUGGESTIONS_ERROR",
+            message="Error without any suggestions",
+            suggestions=[],
+        )
+
+        result = error.__rich__()
+        assert isinstance(result, Group)
+
+        # Convert to text to inspect content
+        console = Console()
+        with console.capture() as capture:
+            console.print(result)
+        output = capture.get()
+
+        assert "NO_SUGGESTIONS_ERROR" in output
+        assert "Error without any suggestions" in output
+        assert "Did you mean:" not in output
+
+    def test_rich_rendering_with_suggestions(self) -> None:
+        """Test Rich rendering of error with suggestions."""
+        error = ParseError(
+            error_type="WITH_SUGGESTIONS",
+            message="Error with suggestions",
+            suggestions=["First suggestion", "Second suggestion"],
+        )
+
+        result = error.__rich__()
+        assert isinstance(result, Group)
+
+        # Convert to text to inspect content
+        console = Console()
+        with console.capture() as capture:
+            console.print(result)
+        output = capture.get()
+
+        assert "WITH_SUGGESTIONS" in output
+        assert "Error with suggestions" in output
+        assert "Did you mean:" in output
+        assert "First suggestion" in output
+        assert "Second suggestion" in output
+
+    def test_rich_rendering_limits_suggestions_to_three(self) -> None:
+        """Test that Rich rendering limits suggestions to max 3."""
+        error = ParseError(
+            error_type="MANY_SUGGESTIONS",
+            message="Error with many suggestions",
+            suggestions=[
+                "Suggestion 1",
+                "Suggestion 2",
+                "Suggestion 3",
+                "Suggestion 4",
+                "Suggestion 5",
+            ],
+        )
+
+        result = error.__rich__()
+        console = Console()
+        with console.capture() as capture:
+            console.print(result)
+        output = capture.get()
+
+        # Should include first 3 suggestions
+        assert "Suggestion 1" in output
+        assert "Suggestion 2" in output
+        assert "Suggestion 3" in output
+
+        # Should NOT include 4th and 5th suggestions
+        assert "Suggestion 4" not in output
+        assert "Suggestion 5" not in output
+
+    def test_error_type_to_status_token_mapping_syntax(self) -> None:
+        """Test that syntax errors map to ERROR status."""
+        error = ParseError(
+            error_type="SYNTAX_ERROR",
+            message="Syntax error in command",
+            suggestions=[],
+        )
+
+        status = error._get_status_token()
+        assert status == StatusToken.ERROR
+
+    def test_error_type_to_status_token_mapping_unknown_command(self) -> None:
+        """Test that unknown command errors map to WARNING status."""
+        error = ParseError(
+            error_type="UNKNOWN_COMMAND",
+            message="Command not found",
+            suggestions=[],
+        )
+
+        status = error._get_status_token()
+        assert status == StatusToken.WARNING
+
+    def test_error_type_to_status_token_mapping_invalid_args(self) -> None:
+        """Test that invalid args errors map to ERROR status."""
+        error = ParseError(
+            error_type="INVALID_ARGS",
+            message="Invalid arguments provided",
+            suggestions=[],
+        )
+
+        status = error._get_status_token()
+        assert status == StatusToken.ERROR
+
+    def test_error_type_to_status_token_mapping_deprecated(self) -> None:
+        """Test that deprecated errors map to WARNING status."""
+        error = ParseError(
+            error_type="DEPRECATED_COMMAND",
+            message="This command is deprecated",
+            suggestions=[],
+        )
+
+        status = error._get_status_token()
+        assert status == StatusToken.WARNING
+
+    def test_error_type_to_status_token_mapping_default(self) -> None:
+        """Test that unknown error types default to ERROR status."""
+        error = ParseError(
+            error_type="RANDOM_ERROR_TYPE",
+            message="Some unknown error",
+            suggestions=[],
+        )
+
+        status = error._get_status_token()
+        assert status == StatusToken.ERROR
+
+    def test_suggestion_hierarchy_first_is_primary(self) -> None:
+        """Test that first suggestion gets PRIMARY hierarchy."""
+        error = ParseError(
+            error_type="TEST",
+            message="Test",
+            suggestions=["First"],
+        )
+
+        hierarchy = error._get_suggestion_hierarchy(0)
+        assert hierarchy == HierarchyToken.PRIMARY
+
+    def test_suggestion_hierarchy_second_is_secondary(self) -> None:
+        """Test that second suggestion gets SECONDARY hierarchy."""
+        error = ParseError(
+            error_type="TEST",
+            message="Test",
+            suggestions=["First", "Second"],
+        )
+
+        hierarchy = error._get_suggestion_hierarchy(1)
+        assert hierarchy == HierarchyToken.SECONDARY
+
+    def test_suggestion_hierarchy_third_is_tertiary(self) -> None:
+        """Test that third suggestion gets TERTIARY hierarchy."""
+        error = ParseError(
+            error_type="TEST",
+            message="Test",
+            suggestions=["First", "Second", "Third"],
+        )
+
+        hierarchy = error._get_suggestion_hierarchy(2)
+        assert hierarchy == HierarchyToken.TERTIARY
+
+    def test_status_style_error(self) -> None:
+        """Test ERROR status maps to correct style."""
+        error = ParseError("TEST", "Test", [])
+        style = error._get_status_style(StatusToken.ERROR)
+        assert "red" in style
+
+    def test_status_style_warning(self) -> None:
+        """Test WARNING status maps to correct style."""
+        error = ParseError("TEST", "Test", [])
+        style = error._get_status_style(StatusToken.WARNING)
+        assert "yellow" in style
+
+    def test_status_style_info(self) -> None:
+        """Test INFO status maps to correct style."""
+        error = ParseError("TEST", "Test", [])
+        style = error._get_status_style(StatusToken.INFO)
+        assert "blue" in style
+
+    def test_hierarchy_style_primary(self) -> None:
+        """Test PRIMARY hierarchy maps to bold style."""
+        error = ParseError("TEST", "Test", [])
+        style = error._get_hierarchy_style(HierarchyToken.PRIMARY)
+        assert "bold" in style
+
+    def test_hierarchy_style_tertiary(self) -> None:
+        """Test TERTIARY hierarchy maps to dim style."""
+        error = ParseError("TEST", "Test", [])
+        style = error._get_hierarchy_style(HierarchyToken.TERTIARY)
+        assert "dim" in style
+
+    def test_rich_rendering_with_console_print(self) -> None:
+        """Test that ParseError can be directly printed to Rich console."""
+        error = ParseError(
+            error_type="CONSOLE_PRINT_TEST",
+            message="Testing console.print() integration",
+            suggestions=["Use console.print()", "Automatic styling works"],
+        )
+
+        console = Console()
+        with console.capture() as capture:
+            console.print(error)
+        output = capture.get()
+
+        assert "CONSOLE_PRINT_TEST" in output
+        assert "Testing console.print() integration" in output
+        assert "Did you mean:" in output
+        assert "Use console.print()" in output
+
+    def test_rich_rendering_preserves_multiline_messages(self) -> None:
+        """Test that multiline error messages are preserved in Rich rendering."""
+        error = ParseError(
+            error_type="MULTILINE_ERROR",
+            message="First line of error\nSecond line of error\nThird line",
+            suggestions=["Fix the error"],
+        )
+
+        console = Console()
+        with console.capture() as capture:
+            console.print(error)
+        output = capture.get()
+
+        assert "First line of error" in output
+        assert "Second line of error" in output
+        assert "Third line" in output
+
+    def test_rich_rendering_handles_unicode(self) -> None:
+        """Test that Rich rendering handles Unicode characters correctly."""
+        error = ParseError(
+            error_type="UNICODE_ERROR",
+            message="Error with Unicode: üñíçødé symbols",
+            suggestions=["Check encoding"],
+        )
+
+        console = Console()
+        with console.capture() as capture:
+            console.print(error)
+        output = capture.get()
+
+        assert "üñíçødé" in output
+
+    def test_rich_rendering_backward_compatible_with_str(self) -> None:
+        """Test that __str__() still works alongside __rich__()."""
+        error = ParseError(
+            error_type="BACKWARD_COMPAT",
+            message="Test backward compatibility",
+            suggestions=["Maintain compatibility"],
+        )
+
+        # __str__() should still work
+        str_output = str(error)
+        assert "BACKWARD_COMPAT" in str_output
+        assert "Test backward compatibility" in str_output
+
+        # __rich__() should also work
+        result = error.__rich__()
+        assert isinstance(result, Group)
+
+    @pytest.mark.parametrize(
+        "error_type,expected_in_output",
+        [
+            ("syntax_error", "syntax_error"),
+            ("UNKNOWN_COMMAND_ERROR", "UNKNOWN_COMMAND_ERROR"),
+            ("invalid_args_provided", "invalid_args_provided"),
+            ("deprecated_feature", "deprecated_feature"),
+        ],
+    )
+    def test_rich_rendering_various_error_types(
+        self, error_type: str, expected_in_output: str
+    ) -> None:
+        """Test Rich rendering with various error type patterns."""
+        error = ParseError(
+            error_type=error_type,
+            message=f"Message for {error_type}",
+            suggestions=["Fix it"],
+        )
+
+        console = Console()
+        with console.capture() as capture:
+            console.print(error)
+        output = capture.get()
+
+        assert expected_in_output in output
+        assert f"Message for {error_type}" in output
 
 
 class TestContext:
