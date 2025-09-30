@@ -548,9 +548,11 @@ class TestSemanticTypeErrorHandling:
         )
 
         assert error.command == cmd
-        assert len(error.suggestions) == 2
-        assert str(error.suggestions[0]) == "help"
-        assert str(error.suggestions[1]) == "status"
+        assert len(error.semantic_suggestions) == 2
+        assert str(error.semantic_suggestions[0]) == "help"
+        assert str(error.semantic_suggestions[1]) == "status"
+        # Test backward compatibility property
+        assert error.command_suggestions == error.semantic_suggestions
 
     def test_semantic_parse_error_with_option_info(self) -> None:
         """
