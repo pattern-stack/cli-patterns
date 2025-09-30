@@ -6,6 +6,12 @@ from typing import Any
 
 import pytest
 
+from cli_patterns.ui.design.tokens import (
+    CategoryToken,
+    DisplayMetadata,
+    EmphasisToken,
+    HierarchyToken,
+)
 from cli_patterns.ui.parser.types import (
     CommandArgs,
     Context,
@@ -313,6 +319,230 @@ class TestParseError:
         assert error.error_type == error_type
         assert error.message == message
         assert error.suggestions == suggestions
+
+    def test_error_with_display_metadata(self) -> None:
+        """Test ParseError with display metadata for enhanced formatting."""
+        error = ParseError(
+            error_type="ENHANCED_ERROR",
+            message="Error with display metadata",
+            suggestions=["Check formatting"],
+        )
+
+        # Add display metadata
+        error.display_metadata = DisplayMetadata(
+            category=CategoryToken.CAT_2,
+            hierarchy=HierarchyToken.SECONDARY,
+            emphasis=EmphasisToken.STRONG,
+        )
+
+        assert error.error_type == "ENHANCED_ERROR"
+        assert error.message == "Error with display metadata"
+        assert error.suggestions == ["Check formatting"]
+        assert hasattr(error, "display_metadata")
+        assert error.display_metadata.category == CategoryToken.CAT_2
+        assert error.display_metadata.hierarchy == HierarchyToken.SECONDARY
+        assert error.display_metadata.emphasis == EmphasisToken.STRONG
+
+    def test_error_without_display_metadata_backward_compatibility(self) -> None:
+        """Test ParseError without display metadata maintains backward compatibility."""
+        error = ParseError(
+            error_type="LEGACY_ERROR",
+            message="Legacy error without metadata",
+            suggestions=["Use legacy handling"],
+        )
+
+        # Should not have display_metadata attribute initially
+        assert not hasattr(error, "display_metadata")
+
+        # Should still function as a proper exception
+        assert error.error_type == "LEGACY_ERROR"
+        assert error.message == "Legacy error without metadata"
+        assert error.suggestions == ["Use legacy handling"]
+
+        # Should be raiseable
+        with pytest.raises(ParseError) as exc_info:
+            raise error
+
+        raised_error = exc_info.value
+        assert raised_error.error_type == "LEGACY_ERROR"
+
+    def test_error_display_metadata_optional_fields(self) -> None:
+        """Test ParseError with display metadata using default values."""
+        error = ParseError(
+            error_type="METADATA_DEFAULT",
+            message="Error using metadata defaults",
+            suggestions=[],
+        )
+
+        # Add minimal display metadata (using defaults)
+        error.display_metadata = DisplayMetadata(category=CategoryToken.CAT_1)
+
+        assert error.display_metadata.category == CategoryToken.CAT_1
+        assert error.display_metadata.hierarchy == HierarchyToken.PRIMARY  # default
+        assert error.display_metadata.emphasis == EmphasisToken.NORMAL  # default
+
+    def test_error_display_metadata_all_categories(self) -> None:
+        """Test ParseError display metadata with all category tokens."""
+        categories = [
+            CategoryToken.CAT_1,
+            CategoryToken.CAT_2,
+            CategoryToken.CAT_3,
+            CategoryToken.CAT_4,
+            CategoryToken.CAT_5,
+            CategoryToken.CAT_6,
+            CategoryToken.CAT_7,
+            CategoryToken.CAT_8,
+        ]
+
+        for category in categories:
+            error = ParseError(
+                error_type=f"CAT_TEST_{category.value.upper()}",
+                message=f"Error with category {category.value}",
+                suggestions=[f"Fix {category.value}"],
+            )
+
+            error.display_metadata = DisplayMetadata(category=category)
+
+            assert error.display_metadata.category == category
+
+    def test_error_display_metadata_all_hierarchies(self) -> None:
+        """Test ParseError display metadata with all hierarchy tokens."""
+        hierarchies = [
+            HierarchyToken.PRIMARY,
+            HierarchyToken.SECONDARY,
+            HierarchyToken.TERTIARY,
+            HierarchyToken.QUATERNARY,
+        ]
+
+        for hierarchy in hierarchies:
+            error = ParseError(
+                error_type=f"HIER_TEST_{hierarchy.value.upper()}",
+                message=f"Error with hierarchy {hierarchy.value}",
+                suggestions=[f"Fix {hierarchy.value}"],
+            )
+
+            error.display_metadata = DisplayMetadata(
+                category=CategoryToken.CAT_1,
+                hierarchy=hierarchy,
+            )
+
+            assert error.display_metadata.hierarchy == hierarchy
+
+    def test_error_display_metadata_all_emphasis(self) -> None:
+        """Test ParseError display metadata with all emphasis tokens."""
+        emphases = [
+            EmphasisToken.STRONG,
+            EmphasisToken.NORMAL,
+            EmphasisToken.SUBTLE,
+        ]
+
+        for emphasis in emphases:
+            error = ParseError(
+                error_type=f"EMPH_TEST_{emphasis.value.upper()}",
+                message=f"Error with emphasis {emphasis.value}",
+                suggestions=[f"Fix {emphasis.value}"],
+            )
+
+            error.display_metadata = DisplayMetadata(
+                category=CategoryToken.CAT_1,
+                emphasis=emphasis,
+            )
+
+            assert error.display_metadata.emphasis == emphasis
+
+    def test_error_metadata_modification_after_creation(self) -> None:
+        """Test modifying display metadata after ParseError creation."""
+        error = ParseError(
+            error_type="MODIFIABLE_ERROR",
+            message="Error that can be modified",
+            suggestions=["Modify as needed"],
+        )
+
+        # Initially no metadata
+        assert not hasattr(error, "display_metadata")
+
+        # Add metadata
+        error.display_metadata = DisplayMetadata(
+            category=CategoryToken.CAT_3,
+            hierarchy=HierarchyToken.TERTIARY,
+            emphasis=EmphasisToken.SUBTLE,
+        )
+
+        assert error.display_metadata.category == CategoryToken.CAT_3
+
+        # Modify metadata
+        error.display_metadata = DisplayMetadata(
+            category=CategoryToken.CAT_5,
+            hierarchy=HierarchyToken.PRIMARY,
+            emphasis=EmphasisToken.STRONG,
+        )
+
+        assert error.display_metadata.category == CategoryToken.CAT_5
+        assert error.display_metadata.hierarchy == HierarchyToken.PRIMARY
+        assert error.display_metadata.emphasis == EmphasisToken.STRONG
+
+    def test_error_with_complex_metadata_combinations(self) -> None:
+        """Test ParseError with complex display metadata combinations."""
+        test_cases = [
+            {
+                "category": CategoryToken.CAT_1,
+                "hierarchy": HierarchyToken.PRIMARY,
+                "emphasis": EmphasisToken.STRONG,
+                "error_type": "COMPLEX_1",
+            },
+            {
+                "category": CategoryToken.CAT_4,
+                "hierarchy": HierarchyToken.TERTIARY,
+                "emphasis": EmphasisToken.SUBTLE,
+                "error_type": "COMPLEX_2",
+            },
+            {
+                "category": CategoryToken.CAT_8,
+                "hierarchy": HierarchyToken.QUATERNARY,
+                "emphasis": EmphasisToken.NORMAL,
+                "error_type": "COMPLEX_3",
+            },
+        ]
+
+        for case in test_cases:
+            error = ParseError(
+                error_type=case["error_type"],
+                message=f"Complex error {case['error_type']}",
+                suggestions=[f"Handle {case['error_type']}"],
+            )
+
+            error.display_metadata = DisplayMetadata(
+                category=case["category"],
+                hierarchy=case["hierarchy"],
+                emphasis=case["emphasis"],
+            )
+
+            # Verify all metadata is correctly set
+            assert error.display_metadata.category == case["category"]
+            assert error.display_metadata.hierarchy == case["hierarchy"]
+            assert error.display_metadata.emphasis == case["emphasis"]
+
+    def test_error_serialization_with_metadata(self) -> None:
+        """Test that ParseError with metadata maintains properties through str()."""
+        error = ParseError(
+            error_type="SERIALIZATION_TEST",
+            message="Error for serialization testing",
+            suggestions=["Test serialization"],
+        )
+
+        error.display_metadata = DisplayMetadata(
+            category=CategoryToken.CAT_2,
+            hierarchy=HierarchyToken.SECONDARY,
+        )
+
+        # String representation should still work
+        error_str = str(error)
+        assert "SERIALIZATION_TEST" in error_str
+        assert "Error for serialization testing" in error_str
+
+        # Metadata should be preserved as object attribute
+        assert error.display_metadata.category == CategoryToken.CAT_2
+        assert error.display_metadata.hierarchy == HierarchyToken.SECONDARY
 
 
 class TestContext:
