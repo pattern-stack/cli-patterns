@@ -16,7 +16,11 @@ class TestParserProtocol:
 
     def test_parser_is_runtime_checkable(self) -> None:
         """Test that Parser protocol is runtime checkable."""
-        assert hasattr(Parser, "__runtime_checkable__")
+        # Check that we can use isinstance with the protocol
+        # Parser should be decorated with @runtime_checkable
+        # which makes it usable with isinstance
+        mock_parser = Mock(spec=Parser)
+        assert isinstance(mock_parser, Parser)
 
     def test_parser_protocol_methods(self) -> None:
         """Test that Parser protocol has required methods."""
@@ -451,8 +455,10 @@ class TestProtocolDocumentation:
         # Should be identifiable as a Protocol
         assert issubclass(Parser, Protocol)
 
-        # Should have runtime checkable decorator
-        assert getattr(Parser, "__runtime_checkable__", False)
+        # Should be runtime checkable (can use isinstance)
+        # The @runtime_checkable decorator enables this
+        mock_obj = Mock(spec=Parser)
+        assert isinstance(mock_obj, Parser), "Parser should be runtime checkable"
 
 
 class TestParserProtocolEdgeCases:

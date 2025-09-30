@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      use_docker:
+        description: 'Run tests in Docker'
+        type: boolean
+        default: false
+
+env:
+  PYTHONPATH: src
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make quality
+
+  test:
+    name: Test - ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit, integration, parser, executor, design]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Native path (default)
+      - if: ${{ !inputs.use_docker }}
+        uses: ./.github/actions/setup
+      - if: ${{ !inputs.use_docker }}
+        run: make test-${{ matrix.suite }}
+
+      # Docker path (on demand)
+      - if: ${{ inputs.use_docker }}
+        run: |
+          docker compose -f docker-compose.ci.yml run \
+            ci make test-${{ matrix.suite }}
+
+  test-fast:
+    name: Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make test-fast
+
+  # Python compatibility check (on main branch)
+  compatibility:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          python-version: ${{ matrix.python }}
+      - run: make test-fast
+
+  # Future: Performance benchmarks
+  # This job is a placeholder for future performance benchmarking.
+  # Currently it just echoes a message but will be expanded to run actual benchmarks.
+  benchmark:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail CI if benchmarks regress (for now)
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run benchmarks in consistent environment
+        run: |
+          docker compose -f docker-compose.ci.yml run \
+            benchmark make benchmark || echo "No benchmarks yet"

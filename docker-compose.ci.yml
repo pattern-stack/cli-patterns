@@ -1,0 +1,26 @@
+services:
+  ci:
+    image: python:3.9-slim-bookworm
+    environment:
+      - PYTHONPATH=src
+      - CI=true
+    volumes:
+      - .:/workspace
+      - pip-cache:/root/.cache/pip
+    working_dir: /workspace
+    entrypoint: ["/workspace/.docker/ci-entrypoint.sh"]
+
+  # For performance regression testing (future)
+  benchmark:
+    extends: ci
+    cpus: '2.0'
+    mem_limit: 4g
+    memswap_limit: 4g
+    environment:
+      - PYTHONPATH=src
+      - CI=true
+      - BENCHMARK_MODE=true
+
+volumes:
+  pip-cache:
+    driver: local
