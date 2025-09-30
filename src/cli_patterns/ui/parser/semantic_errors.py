@@ -21,7 +21,8 @@ class SemanticParseError(ParseError):
     Attributes:
         message: Human-readable error message
         error_type: Type of parsing error
-        suggestions: List of suggested corrections (semantic types, shadows base class)
+        suggestions: List of suggested corrections (from base class, as strings)
+        semantic_suggestions: List of suggested corrections (as semantic CommandId types)
         command: Command that caused the error (if applicable)
         invalid_option: Invalid option key (if applicable)
         valid_options: List of valid option keys (if applicable)
@@ -61,12 +62,20 @@ class SemanticParseError(ParseError):
         )
         super().__init__(error_type, message, string_suggestions)
 
-        # Store semantic type information - we shadow the base class suggestions
-        # This is intentional to provide semantic type access
-        self.suggestions: list[CommandId] = suggestions or []  # type: ignore[assignment]
+        # Store semantic type information with a distinct attribute name
+        self.semantic_suggestions: list[CommandId] = suggestions or []
         self.command = command
         self.invalid_option = invalid_option
         self.valid_options = valid_options or []
         self.required_role = required_role
         self.current_role = current_role
         self.context_info = context_info or {}
+
+    @property
+    def command_suggestions(self) -> list[CommandId]:
+        """Get semantic command suggestions for backward compatibility.
+
+        Returns:
+            List of CommandId suggestions
+        """
+        return self.semantic_suggestions

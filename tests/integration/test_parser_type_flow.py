@@ -271,9 +271,9 @@ class TestSemanticTypeErrorFlowIntegration:
         error = exc_info.value
         assert error.error_type == "UNKNOWN_COMMAND"
         assert str(error.command) == "invalid-command"
-        assert len(error.suggestions) == 2
-        assert str(error.suggestions[0]) == "help"
-        assert str(error.suggestions[1]) == "status"
+        assert len(error.semantic_suggestions) == 2
+        assert str(error.semantic_suggestions[0]) == "help"
+        assert str(error.semantic_suggestions[1]) == "status"
 
     def test_semantic_error_recovery_mechanisms(self) -> None:
         """
@@ -306,9 +306,9 @@ class TestSemanticTypeErrorFlowIntegration:
         assert error.error_type == "UNKNOWN_COMMAND"
 
         # Should have suggestions for similar commands
-        suggestion_strs = [str(cmd) for cmd in error.suggestions]
+        suggestion_strs = [str(cmd) for cmd in error.semantic_suggestions]
         assert "help" in suggestion_strs
-        assert len(error.suggestions) <= 5  # Reasonable number of suggestions
+        assert len(error.semantic_suggestions) <= 5  # Reasonable number of suggestions
 
     def test_semantic_validation_errors_with_context(self) -> None:
         """
