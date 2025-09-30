@@ -13,6 +13,8 @@ from rich.console import Console
 from cli_patterns.execution.subprocess_executor import SubprocessExecutor
 from cli_patterns.ui.design.registry import theme_registry
 
+pytestmark = pytest.mark.executor
+
 
 class TestSubprocessExecutorIntegration:
     """Integration tests for SubprocessExecutor with real commands."""
@@ -98,6 +100,7 @@ class TestSubprocessExecutorIntegration:
         assert result.exit_code == 42
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_timeout(self, executor):
         """Test command timeout."""
         # Use Python sleep to ensure cross-platform compatibility
@@ -135,6 +138,7 @@ class TestSubprocessExecutorIntegration:
         assert "test_value" in result.stdout
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_large_output(self, executor):
         """Test command with large output."""
         # Generate 1000 lines of output
@@ -149,6 +153,7 @@ class TestSubprocessExecutorIntegration:
         assert lines[-1] == "Line 999"
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_concurrent_execution(self, executor):
         """Test running multiple commands concurrently."""
         tasks = [
@@ -165,6 +170,7 @@ class TestSubprocessExecutorIntegration:
         assert "Command 3" in results[2].stdout
 
     @pytest.mark.asyncio
+    @pytest.mark.slow
     async def test_streaming_output(self):
         """Test output streaming in real-time."""
         console = Console(force_terminal=True, width=80, no_color=True)

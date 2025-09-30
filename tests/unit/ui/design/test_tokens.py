@@ -13,6 +13,8 @@ from cli_patterns.ui.design.tokens import (
     StatusToken,
 )
 
+pytestmark = pytest.mark.design
+
 
 class TestCategoryToken:
     """Test CategoryToken enum."""
