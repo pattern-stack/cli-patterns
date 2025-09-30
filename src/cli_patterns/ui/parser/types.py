@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 
+from rich.console import Group, RenderableType
+from rich.text import Text
+
+from cli_patterns.ui.design.tokens import HierarchyToken, StatusToken
+
 if TYPE_CHECKING:
     pass
 
@@ -114,6 +119,128 @@ class ParseError(Exception):
     def __str__(self) -> str:
         """String representation of the error."""
         return f"{self.error_type}: {self.message}"
+
+    def __rich__(self) -> RenderableType:
+        """Rich rendering protocol implementation for automatic themed display.
+
+        Returns:
+            RenderableType (Group) containing styled error message and suggestions
+        """
+        # Map error_type to StatusToken
+        status_token = self._get_status_token()
+
+        # Create styled error message
+        error_text = Text()
+        error_text.append(
+            f"{self.error_type}: ", style=self._get_status_style(status_token)
+        )
+        error_text.append(self.message)
+
+        # Create suggestions list with hierarchy styling (limit to 3)
+        renderables: list[RenderableType] = [error_text]
+
+        if self.suggestions:
+            # Add "Did you mean:" prompt
+            prompt_text = Text(
+                "\n\nDid you mean:", style=self._get_status_style(StatusToken.INFO)
+            )
+            renderables.append(prompt_text)
+
+            # Add up to 3 suggestions with hierarchy styling
+            for idx, suggestion in enumerate(self.suggestions[:3]):
+                hierarchy = self._get_suggestion_hierarchy(idx)
+                suggestion_text = Text()
+                suggestion_text.append(
+                    f"\n  • {suggestion}", style=self._get_hierarchy_style(hierarchy)
+                )
+                renderables.append(suggestion_text)
+
+        return Group(*renderables)
+
+    def _get_status_token(self) -> StatusToken:
+        """Map error_type to appropriate StatusToken.
+
+        Returns:
+            StatusToken based on error_type
+        """
+        error_type_lower = self.error_type.lower()
+
+        if "syntax" in error_type_lower:
+            return StatusToken.ERROR
+        elif (
+            "unknown_command" in error_type_lower
+            or "command_not_found" in error_type_lower
+        ):
+            return StatusToken.WARNING
+        elif (
+            "invalid_args" in error_type_lower or "invalid_argument" in error_type_lower
+        ):
+            return StatusToken.ERROR
+        elif "deprecated" in error_type_lower:
+            return StatusToken.WARNING
+        else:
+            # Default to ERROR for unknown error types
+            return StatusToken.ERROR
+
+    def _get_suggestion_hierarchy(self, index: int) -> HierarchyToken:
+        """Get hierarchy token for suggestion based on ranking.
+
+        Args:
+            index: Position in suggestions list (0-based)
+
+        Returns:
+            HierarchyToken indicating visual importance
+        """
+        if index == 0:
+            return HierarchyToken.PRIMARY  # Best match
+        elif index == 1:
+            return HierarchyToken.SECONDARY  # Good match
+        else:
+            return HierarchyToken.TERTIARY  # Possible match
+
+    def _get_status_style(self, status: StatusToken) -> str:
+        """Get Rich style string for StatusToken.
+
+        Args:
+            status: StatusToken to convert to style
+
+        Returns:
+            Rich style string
+        """
+        if status == StatusToken.ERROR:
+            return "bold red"
+        elif status == StatusToken.WARNING:
+            return "bold yellow"
+        elif status == StatusToken.INFO:
+            return "blue"
+        elif status == StatusToken.SUCCESS:
+            return "bold green"
+        elif status == StatusToken.RUNNING:
+            return "cyan"
+        elif status == StatusToken.MUTED:
+            return "dim"
+        else:
+            return "default"
+
+    def _get_hierarchy_style(self, hierarchy: HierarchyToken) -> str:
+        """Get Rich style string for HierarchyToken.
+
+        Args:
+            hierarchy: HierarchyToken to convert to style
+
+        Returns:
+            Rich style string
+        """
+        if hierarchy == HierarchyToken.PRIMARY:
+            return "bold"
+        elif hierarchy == HierarchyToken.SECONDARY:
+            return "default"
+        elif hierarchy == HierarchyToken.TERTIARY:
+            return "dim"
+        elif hierarchy == HierarchyToken.QUATERNARY:
+            return "dim italic"
+        else:
+            return "default"
 
 
 @dataclass
