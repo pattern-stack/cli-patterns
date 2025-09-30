@@ -7,8 +7,6 @@ import pytest
 from cli_patterns.ui.parser.parsers import TextParser
 from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
 
-pytestmark = pytest.mark.parser
-
 
 class TestTextParserBasics:
     """Test basic TextParser functionality."""

@@ -25,8 +25,6 @@ from cli_patterns.ui.design.tokens import (
     StatusToken,
 )
 
-pytestmark = pytest.mark.design
-
 
 class TestTheme:
     """Tests for the base Theme class."""

@@ -1,23 +1,21 @@
-"""Test configuration and auto-marking for pytest."""
+"""Pytest configuration for CLI Patterns tests."""
 
 import pytest
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-mark tests based on their location."""
+    """Automatically add markers based on test file location."""
     for item in items:
-        # Path-based markers
+        # Add unit/integration markers based on path
         if "tests/unit" in str(item.fspath):
             item.add_marker(pytest.mark.unit)
         elif "tests/integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
 
-        # Component-based markers
-        if "/parser/" in str(item.fspath):
+        # Add component markers based on path
+        if "parser" in str(item.fspath):
             item.add_marker(pytest.mark.parser)
-        elif "/execution/" in str(item.fspath) or "subprocess" in item.name:
+        elif "executor" in str(item.fspath) or "execution" in str(item.fspath):
             item.add_marker(pytest.mark.executor)
-        elif "/design/" in str(item.fspath):
+        elif "design" in str(item.fspath):
             item.add_marker(pytest.mark.design)
-        elif "/ui/" in str(item.fspath):
-            item.add_marker(pytest.mark.ui)

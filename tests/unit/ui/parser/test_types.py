@@ -13,8 +13,6 @@ from cli_patterns.ui.parser.types import (
     ParseResult,
 )
 
-pytestmark = pytest.mark.parser
-
 
 class TestParseResult:
     """Test ParseResult dataclass."""

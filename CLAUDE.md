@@ -40,9 +40,6 @@ PYTHONPATH=src python3 -m pytest tests/unit/ui/design/ -v
 
 # Test execution components
 PYTHONPATH=src python3 -m pytest tests/unit/execution/ -v
-
-# Test parser components
-PYTHONPATH=src python3 -m pytest tests/unit/ui/parser/ -v
 ```
 
 ## Architecture Overview
@@ -63,7 +60,6 @@ src/cli_patterns/
 ├── execution/      # Runtime engine and subprocess execution
 ├── ui/             # User interface components
 │   ├── design/     # Design system (themes, tokens, components)
-│   ├── parser/     # Command parsing system
 │   └── screens/    # Screen implementations (future)
 └── cli.py          # Main entry point
 ```
@@ -75,20 +71,12 @@ The UI uses a comprehensive design system with:
 - **Component Registry**: Centralized component registration and theming
 - **Rich Integration**: Built on Rich library for terminal rendering
 
-### Parser System
-The command parsing system provides flexible input interpretation:
-- **Protocol-based**: All parsers implement the `Parser` protocol for consistency
-- **Pipeline Architecture**: `ParserPipeline` routes input to appropriate parsers
-- **Command Registry**: Manages command metadata and provides fuzzy-matching suggestions
-- **Multiple Paradigms**: Supports text commands, shell pass-through (!), and extensible for more
-
 ### Key Protocols
 - `WizardConfig`: Complete wizard definition
 - `SessionState`: Runtime state management
 - `ActionExecutor`: Protocol for action execution
 - `OptionCollector`: Protocol for option collection
 - `NavigationController`: Protocol for navigation
-- `Parser`: Protocol for command parsers with consistent input interpretation
 
 ## Type System Requirements
 
@@ -115,13 +103,11 @@ Key testing focus areas:
 
 ### Completed Components
 - Design system (themes, tokens, components, registry)
-- Subprocess executor with async execution and themed output (CLI-9)
-- Interactive shell with prompt_toolkit (CLI-7)
-- Command parser system with composable architecture (CLI-8)
-- Command registry with fuzzy matching and suggestions
+- Subprocess executor with async execution and themed output
 - Basic type definitions and protocols structure
 
-### In Progress
+### In Progress (Branch CLI-9)
+- Subprocess executor enhancements
 - Test coverage improvements
 - Integration testing
 
@@ -129,6 +115,7 @@ Key testing focus areas:
 - Core wizard models and validation
 - YAML/JSON definition loaders
 - Python decorator system
+- Interactive shell with prompt_toolkit
 - Navigation controller
 - Session state management
 - CLI entry point

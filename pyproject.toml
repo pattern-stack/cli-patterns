@@ -102,14 +102,12 @@ testpaths = [
     "tests",
 ]
 markers = [
-    "unit: Unit tests (tests/unit/)",
-    "integration: Integration tests (tests/integration/)",
-    "slow: Tests taking longer than 0.5 seconds",
-    "parser: Parser component tests",
-    "executor: Executor/execution component tests",
-    "design: Design system tests",
-    "ui: UI component tests",
-    "asyncio: Async tests (already in use)"
+    "unit: Unit tests for individual components",
+    "integration: Integration tests for component interactions",
+    "parser: Tests for parser system components",
+    "executor: Tests for execution/subprocess components",
+    "design: Tests for design system components",
+    "slow: Tests that take significant time to run",
 ]
 
 [dependency-groups]

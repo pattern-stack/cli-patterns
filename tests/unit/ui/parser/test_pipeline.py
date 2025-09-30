@@ -10,8 +10,6 @@ from cli_patterns.ui.parser.pipeline import ParserPipeline
 from cli_patterns.ui.parser.protocols import Parser
 from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
 
-pytestmark = pytest.mark.parser
-
 
 class TestParserPipeline:
     """Test ParserPipeline basic functionality."""
@@ -614,8 +612,7 @@ class TestParserPipelineAdvancedFeatures:
             and input.strip().endswith(">"),
         )
         pipeline.add_parser(
-            text_parser,
-            lambda input, ctx: True,  # Fallback for plain text
+            text_parser, lambda input, ctx: True  # Fallback for plain text
         )
 
         context = Context("interactive", [], {})

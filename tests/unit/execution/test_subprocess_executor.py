@@ -10,8 +10,6 @@ from rich.console import Console
 
 from cli_patterns.execution.subprocess_executor import CommandResult, SubprocessExecutor
 
-pytestmark = pytest.mark.executor
-
 
 class TestCommandResult:
     """Test CommandResult class."""
@@ -140,7 +138,6 @@ class TestSubprocessExecutor:
             assert console.print.called
 
     @pytest.mark.asyncio
-    @pytest.mark.slow
     async def test_timeout(self, executor, console):
         """Test command timeout."""
         with patch("asyncio.create_subprocess_shell") as mock_create:

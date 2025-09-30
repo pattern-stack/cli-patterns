@@ -1,7 +1,5 @@
 """Tests for UI components and design elements."""
 
-import pytest
-
 from cli_patterns.ui.design.boxes import (
     ASCII,
     BOX_STYLES,
@@ -24,8 +22,6 @@ from cli_patterns.ui.design.tokens import (
     HierarchyToken,
     StatusToken,
 )
-
-pytestmark = pytest.mark.design
 
 
 class TestPanelComponent:
