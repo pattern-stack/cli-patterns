@@ -759,3 +759,161 @@ class TestPydanticValidation:
         config = BashActionConfig(**json_data)
         assert config.id == make_action_id("deploy")
         assert config.name == "Deploy"
+
+
+class TestCollectionLimits:
+    """Test collection size limits for DoS protection."""
+
+    def test_rejects_too_many_actions_in_branch(self) -> None:
+        """Should reject branch with too many actions (>100)."""
+        with pytest.raises(ValidationError, match="Too many actions"):
+            BranchConfig(
+                id=make_branch_id("test"),
+                title="Test",
+                actions=[
+                    BashActionConfig(
+                        id=make_action_id(f"action{i}"),
+                        name=f"Action {i}",
+                        command="echo test",
+                    )
+                    for i in range(101)  # Over limit
+                ],
+            )
+
+    def test_accepts_max_actions_in_branch(self) -> None:
+        """Should accept branch with exactly 100 actions."""
+        config = BranchConfig(
+            id=make_branch_id("test"),
+            title="Test",
+            actions=[
+                BashActionConfig(
+                    id=make_action_id(f"action{i}"),
+                    name=f"Action {i}",
+                    command="echo test",
+                )
+                for i in range(100)  # At limit
+            ],
+        )
+        assert len(config.actions) == 100
+
+    def test_rejects_too_many_options_in_branch(self) -> None:
+        """Should reject branch with too many options (>50)."""
+        with pytest.raises(ValidationError, match="Too many options"):
+            BranchConfig(
+                id=make_branch_id("test"),
+                title="Test",
+                options=[
+                    StringOptionConfig(
+                        id=make_option_key(f"option{i}"),
+                        name=f"Option {i}",
+                        description="Test option",
+                    )
+                    for i in range(51)  # Over limit
+                ],
+            )
+
+    def test_accepts_max_options_in_branch(self) -> None:
+        """Should accept branch with exactly 50 options."""
+        config = BranchConfig(
+            id=make_branch_id("test"),
+            title="Test",
+            options=[
+                StringOptionConfig(
+                    id=make_option_key(f"option{i}"),
+                    name=f"Option {i}",
+                    description="Test option",
+                )
+                for i in range(50)  # At limit
+            ],
+        )
+        assert len(config.options) == 50
+
+    def test_rejects_too_many_menus_in_branch(self) -> None:
+        """Should reject branch with too many menus (>20)."""
+        with pytest.raises(ValidationError, match="Too many menus"):
+            BranchConfig(
+                id=make_branch_id("test"),
+                title="Test",
+                menus=[
+                    MenuConfig(
+                        id=make_menu_id(f"menu{i}"),
+                        label=f"Menu {i}",
+                        target=make_branch_id("target"),
+                    )
+                    for i in range(21)  # Over limit
+                ],
+            )
+
+    def test_accepts_max_menus_in_branch(self) -> None:
+        """Should accept branch with exactly 20 menus."""
+        config = BranchConfig(
+            id=make_branch_id("test"),
+            title="Test",
+            menus=[
+                MenuConfig(
+                    id=make_menu_id(f"menu{i}"),
+                    label=f"Menu {i}",
+                    target=make_branch_id("target"),
+                )
+                for i in range(20)  # At limit
+            ],
+        )
+        assert len(config.menus) == 20
+
+    def test_rejects_too_many_branches_in_wizard(self) -> None:
+        """Should reject wizard with too many branches (>100)."""
+        with pytest.raises(ValidationError, match="Too many branches"):
+            WizardConfig(
+                name="test",
+                version="1.0.0",
+                entry_branch=make_branch_id("branch0"),
+                branches=[
+                    BranchConfig(
+                        id=make_branch_id(f"branch{i}"),
+                        title=f"Branch {i}",
+                    )
+                    for i in range(101)  # Over limit
+                ],
+            )
+
+    def test_accepts_max_branches_in_wizard(self) -> None:
+        """Should accept wizard with exactly 100 branches."""
+        config = WizardConfig(
+            name="test",
+            version="1.0.0",
+            entry_branch=make_branch_id("branch0"),
+            branches=[
+                BranchConfig(
+                    id=make_branch_id(f"branch{i}"),
+                    title=f"Branch {i}",
+                )
+                for i in range(100)  # At limit
+            ],
+        )
+        assert len(config.branches) == 100
+
+    def test_rejects_too_many_option_values_in_session(self) -> None:
+        """Should reject session with too many option values (>1000)."""
+        with pytest.raises(ValidationError, match="Too many options"):
+            SessionState(
+                option_values={
+                    make_option_key(f"option{i}"): "value" for i in range(1001)
+                }
+            )
+
+    def test_accepts_max_option_values_in_session(self) -> None:
+        """Should accept session with exactly 1000 option values."""
+        state = SessionState(
+            option_values={make_option_key(f"option{i}"): "value" for i in range(1000)}
+        )
+        assert len(state.option_values) == 1000
+
+    def test_rejects_too_many_variables_in_session(self) -> None:
+        """Should reject session with too many variables (>1000)."""
+        with pytest.raises(ValidationError, match="Too many variables"):
+            SessionState(variables={f"var{i}": "value" for i in range(1001)})
+
+    def test_accepts_max_variables_in_session(self) -> None:
+        """Should accept session with exactly 1000 variables."""
+        state = SessionState(variables={f"var{i}": "value" for i in range(1000)})
+        assert len(state.variables) == 1000
