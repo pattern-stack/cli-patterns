@@ -17,7 +17,7 @@ StateValue is a JSON-compatible type alias for flexible state storage.
 
 from __future__ import annotations
 
-from typing import Any, NewType, Union
+from typing import Any, NewType, Optional, Union
 
 from typing_extensions import TypeGuard
 
@@ -63,12 +63,12 @@ MenuList = list[MenuId]
 
 
 # Factory functions for creating semantic types
-def make_branch_id(value: str, validate: bool = False) -> BranchId:
+def make_branch_id(value: str, validate: Optional[bool] = None) -> BranchId:
     """Create a BranchId from a string value.
 
     Args:
         value: String value to convert to BranchId
-        validate: If True, validate the input (default: False for zero overhead)
+        validate: If True, validate input. If None, use global config. If False, skip.
 
     Returns:
         BranchId with semantic type safety
@@ -76,6 +76,12 @@ def make_branch_id(value: str, validate: bool = False) -> BranchId:
     Raises:
         ValueError: If validate=True and value is invalid
     """
+    if validate is None:
+        # Import here to avoid circular dependency
+        from cli_patterns.core.config import get_config
+
+        validate = get_config()["enable_validation"]
+
     if validate:
         if not value or not value.strip():
             raise ValueError("BranchId cannot be empty")
@@ -84,12 +90,12 @@ def make_branch_id(value: str, validate: bool = False) -> BranchId:
     return BranchId(value)
 
 
-def make_action_id(value: str, validate: bool = False) -> ActionId:
+def make_action_id(value: str, validate: Optional[bool] = None) -> ActionId:
     """Create an ActionId from a string value.
 
     Args:
         value: String value to convert to ActionId
-        validate: If True, validate the input (default: False for zero overhead)
+        validate: If True, validate input. If None, use global config. If False, skip.
 
     Returns:
         ActionId with semantic type safety
@@ -97,6 +103,11 @@ def make_action_id(value: str, validate: bool = False) -> ActionId:
     Raises:
         ValueError: If validate=True and value is invalid
     """
+    if validate is None:
+        from cli_patterns.core.config import get_config
+
+        validate = get_config()["enable_validation"]
+
     if validate:
         if not value or not value.strip():
             raise ValueError("ActionId cannot be empty")
@@ -105,12 +116,12 @@ def make_action_id(value: str, validate: bool = False) -> ActionId:
     return ActionId(value)
 
 
-def make_option_key(value: str, validate: bool = False) -> OptionKey:
+def make_option_key(value: str, validate: Optional[bool] = None) -> OptionKey:
     """Create an OptionKey from a string value.
 
     Args:
         value: String value to convert to OptionKey
-        validate: If True, validate the input (default: False for zero overhead)
+        validate: If True, validate input. If None, use global config. If False, skip.
 
     Returns:
         OptionKey with semantic type safety
@@ -118,6 +129,11 @@ def make_option_key(value: str, validate: bool = False) -> OptionKey:
     Raises:
         ValueError: If validate=True and value is invalid
     """
+    if validate is None:
+        from cli_patterns.core.config import get_config
+
+        validate = get_config()["enable_validation"]
+
     if validate:
         if not value or not value.strip():
             raise ValueError("OptionKey cannot be empty")
@@ -126,12 +142,12 @@ def make_option_key(value: str, validate: bool = False) -> OptionKey:
     return OptionKey(value)
 
 
-def make_menu_id(value: str, validate: bool = False) -> MenuId:
+def make_menu_id(value: str, validate: Optional[bool] = None) -> MenuId:
     """Create a MenuId from a string value.
 
     Args:
         value: String value to convert to MenuId
-        validate: If True, validate the input (default: False for zero overhead)
+        validate: If True, validate input. If None, use global config. If False, skip.
 
     Returns:
         MenuId with semantic type safety
@@ -139,6 +155,11 @@ def make_menu_id(value: str, validate: bool = False) -> MenuId:
     Raises:
         ValueError: If validate=True and value is invalid
     """
+    if validate is None:
+        from cli_patterns.core.config import get_config
+
+        validate = get_config()["enable_validation"]
+
     if validate:
         if not value or not value.strip():
             raise ValueError("MenuId cannot be empty")
