@@ -472,17 +472,17 @@ class TestWizardConfig:
         """
         GIVEN: Wizard with entry_branch that doesn't exist in branches
         WHEN: Creating a WizardConfig
-        THEN: Validation should succeed (validation is runtime, not construction)
+        THEN: Validation error is raised
         """
         branch = BranchConfig(id=make_branch_id("main"), title="Main")
-        # Entry branch points to non-existent branch - this is allowed at construction
-        config = WizardConfig(
-            name="test-wizard",
-            version="1.0.0",
-            entry_branch=make_branch_id("nonexistent"),
-            branches=[branch],
-        )
-        assert config.entry_branch == make_branch_id("nonexistent")
+        # Entry branch points to non-existent branch - should raise validation error
+        with pytest.raises(ValidationError, match="entry_branch.*not found"):
+            WizardConfig(
+                name="test-wizard",
+                version="1.0.0",
+                entry_branch=make_branch_id("nonexistent"),
+                branches=[branch],
+            )
 
     def test_wizard_config_multiple_branches(self) -> None:
         """
