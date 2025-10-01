@@ -13,7 +13,9 @@ Example usage:
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import shlex
 from typing import Optional, Union
 
 from rich.console import Console
@@ -22,6 +24,8 @@ from rich.text import Text
 from ..ui.design.components import Output
 from ..ui.design.registry import theme_registry
 from ..ui.design.tokens import StatusToken
+
+logger = logging.getLogger(__name__)
 
 
 class CommandResult:
@@ -83,6 +87,7 @@ class SubprocessExecutor:
         timeout: Optional[float] = None,
         cwd: Optional[str] = None,
         env: Optional[dict[str, str]] = None,
+        allow_shell_features: bool = False,
     ) -> CommandResult:
         """Execute a command asynchronously with themed output streaming.
 
@@ -91,22 +96,40 @@ class SubprocessExecutor:
             timeout: Command timeout in seconds (uses default if None)
             cwd: Working directory for the command
             env: Environment variables for the command
+            allow_shell_features: Allow shell features (pipes, redirects, etc.).
+                SECURITY WARNING: Only enable for trusted commands. When False,
+                command is executed without shell to prevent injection attacks.
 
         Returns:
             CommandResult with exit code and captured output
         """
         timeout = timeout or self.default_timeout
 
-        # Show running status
-        if self.stream_output:
-            running_style = theme_registry.resolve(StatusToken.RUNNING)
-            self.console.print(Text(f"Running: {command}", style=running_style))
-
-        # Prepare command
+        # Prepare command list for display and execution
         if isinstance(command, list):
+            command_list = command
             command_str = " ".join(command)
         else:
             command_str = command
+            # Parse string into list for safe execution
+            try:
+                command_list = shlex.split(command_str)
+            except ValueError as e:
+                # Invalid shell syntax
+                stderr_msg = f"Invalid command syntax: {e}"
+                if self.stream_output:
+                    error_style = theme_registry.resolve(StatusToken.ERROR)
+                    self.console.print(Text(stderr_msg, style=error_style))
+                return CommandResult(
+                    exit_code=-1,
+                    stdout="",
+                    stderr=stderr_msg,
+                )
+
+        # Show running status
+        if self.stream_output:
+            running_style = theme_registry.resolve(StatusToken.RUNNING)
+            self.console.print(Text(f"Running: {command_str}", style=running_style))
 
         # Merge environment variables
         process_env = os.environ.copy()
@@ -122,14 +145,39 @@ class SubprocessExecutor:
         process = None  # Initialize process variable
 
         try:
-            # Create subprocess
-            process = await asyncio.create_subprocess_shell(
-                command_str,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-                env=process_env,
-            )
+            # Create subprocess - use shell only if explicitly allowed
+            if allow_shell_features:
+                # SECURITY WARNING: Shell features enabled
+                logger.warning(
+                    f"Executing command with shell features enabled: {command_str}"
+                )
+                process = await asyncio.create_subprocess_shell(
+                    command_str,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                    env=process_env,
+                )
+            else:
+                # Safe execution without shell (prevents injection)
+                if not command_list:
+                    stderr_msg = "Empty command"
+                    if self.stream_output:
+                        error_style = theme_registry.resolve(StatusToken.ERROR)
+                        self.console.print(Text(stderr_msg, style=error_style))
+                    return CommandResult(
+                        exit_code=-1,
+                        stdout="",
+                        stderr=stderr_msg,
+                    )
+
+                process = await asyncio.create_subprocess_exec(
+                    *command_list,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=cwd,
+                    env=process_env,
+                )
 
             # Create tasks for reading streams
             stdout_task = asyncio.create_task(

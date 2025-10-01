@@ -70,7 +70,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_successful_command(self, executor, console):
         """Test successful command execution."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 0
@@ -95,7 +95,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_failed_command(self, executor, console):
         """Test failed command execution."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 1
@@ -116,7 +116,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_command_not_found(self, executor, console):
         """Test command not found error."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             mock_create.side_effect = FileNotFoundError("Command not found")
 
             result = await executor.run("nonexistent-command")
@@ -129,7 +129,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_permission_denied(self, executor, console):
         """Test permission denied error."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             mock_create.side_effect = PermissionError("Permission denied")
 
             result = await executor.run("/root/protected")
@@ -143,7 +143,7 @@ class TestSubprocessExecutor:
     @pytest.mark.slow
     async def test_timeout(self, executor, console):
         """Test command timeout."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process that times out
             mock_process = AsyncMock()
             mock_process.returncode = None
@@ -166,7 +166,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_keyboard_interrupt(self, executor, console):
         """Test keyboard interrupt handling."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             mock_create.side_effect = KeyboardInterrupt()
 
             result = await executor.run("long-running-command")
@@ -178,7 +178,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_list_command(self, executor, console):
         """Test command as list of arguments."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 0
@@ -193,14 +193,14 @@ class TestSubprocessExecutor:
 
             assert result.success
             mock_create.assert_called_once()
-            # Check that list was joined into string
-            call_args = mock_create.call_args[0][0]
-            assert call_args == "ls -la /tmp"
+            # Check that list was passed correctly to exec
+            call_args = mock_create.call_args[0]
+            assert call_args == ("ls", "-la", "/tmp")
 
     @pytest.mark.asyncio
     async def test_custom_env(self, executor, console):
         """Test command with custom environment variables."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 0
@@ -212,7 +212,7 @@ class TestSubprocessExecutor:
             mock_create.return_value = mock_process
 
             custom_env = {"MY_VAR": "VALUE"}
-            result = await executor.run("echo $MY_VAR", env=custom_env)
+            result = await executor.run("echo test", env=custom_env)
 
             assert result.success
             mock_create.assert_called_once()
@@ -224,7 +224,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_custom_cwd(self, executor, console):
         """Test command with custom working directory."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 0
@@ -248,7 +248,7 @@ class TestSubprocessExecutor:
         """Test executor without output streaming."""
         executor = SubprocessExecutor(console=console, stream_output=False)
 
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process
             mock_process = AsyncMock()
             mock_process.returncode = 0
@@ -269,7 +269,7 @@ class TestSubprocessExecutor:
     @pytest.mark.asyncio
     async def test_binary_output_handling(self, executor, console):
         """Test handling of binary output that can't be decoded."""
-        with patch("asyncio.create_subprocess_shell") as mock_create:
+        with patch("asyncio.create_subprocess_exec") as mock_create:
             # Mock process with binary output
             mock_process = AsyncMock()
             mock_process.returncode = 0
