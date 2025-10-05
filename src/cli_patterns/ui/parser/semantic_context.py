@@ -1,6 +1,6 @@
 """Semantic context using semantic types for type safety.
 
-This module provides SemanticContext, which is like Context but uses
+This module provides SemanticContext, which is like SessionState but uses
 semantic types instead of plain strings for enhanced type safety.
 """
 
@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.core.parser_types import (
     CommandId,
     CommandList,
@@ -19,14 +20,13 @@ from cli_patterns.core.parser_types import (
     make_context_key,
     make_parse_mode,
 )
-from cli_patterns.ui.parser.types import Context
 
 
 @dataclass
 class SemanticContext:
     """Parsing context containing session state and history using semantic types.
 
-    This is the semantic type equivalent of Context, providing type safety
+    This is the semantic type equivalent of SessionState, providing type safety
     for parsing context operations while maintaining the same structure.
 
     Attributes:
@@ -36,47 +36,44 @@ class SemanticContext:
         current_directory: Current working directory (optional)
     """
 
-    mode: ParseMode = field(default_factory=lambda: make_parse_mode("text"))
+    mode: ParseMode = field(default_factory=lambda: make_parse_mode("interactive"))
     history: CommandList = field(default_factory=list)
     session_state: ContextState = field(default_factory=dict)
     current_directory: Optional[str] = None
 
     @classmethod
-    def from_context(cls, context: Context) -> SemanticContext:
-        """Create a SemanticContext from a regular Context.
+    def from_session_state(cls, session: SessionState) -> SemanticContext:
+        """Create a SemanticContext from a SessionState.
 
         Args:
-            context: Regular Context to convert
+            session: SessionState to convert
 
         Returns:
             SemanticContext with semantic types
         """
         return cls(
-            mode=make_parse_mode(context.mode),
-            history=[make_command_id(cmd) for cmd in context.history],
+            mode=make_parse_mode(session.parse_mode),
+            history=[make_command_id(cmd) for cmd in session.command_history],
             session_state={
                 make_context_key(key): value
-                for key, value in context.session_state.items()
+                for key, value in session.variables.items()
                 if isinstance(
                     value, str
                 )  # Only convert string values to maintain type safety
             },
-            current_directory=context.current_directory,
+            current_directory=None,  # SessionState doesn't have current_directory
         )
 
-    def to_context(self) -> Context:
-        """Convert this SemanticContext to a regular Context.
+    def to_session_state(self) -> SessionState:
+        """Convert this SemanticContext to a SessionState.
 
         Returns:
-            Regular Context with string types
+            SessionState with string types
         """
-        return Context(
-            mode=str(self.mode),
-            history=[str(cmd) for cmd in self.history],
-            session_state={
-                str(key): value for key, value in self.session_state.items()
-            },
-            current_directory=self.current_directory,
+        return SessionState(
+            parse_mode=str(self.mode),
+            command_history=[str(cmd) for cmd in self.history],
+            variables={str(key): value for key, value in self.session_state.items()},
         )
 
     def add_to_history(self, command: CommandId) -> None:

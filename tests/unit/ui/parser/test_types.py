@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from rich.console import Console, Group
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.design.tokens import (
     CategoryToken,
     DisplayMetadata,
@@ -16,7 +17,6 @@ from cli_patterns.ui.design.tokens import (
 )
 from cli_patterns.ui.parser.types import (
     CommandArgs,
-    Context,
     ParseError,
     ParseResult,
 )
@@ -875,31 +875,31 @@ class TestParseErrorRichRendering:
         assert f"Message for {error_type}" in output
 
 
-class TestContext:
-    """Test Context class for parser state management."""
+class TestSessionState:
+    """Test SessionState class for parser state management."""
 
-    def test_basic_context_creation(self) -> None:
-        """Test basic Context creation."""
-        context = Context(
-            mode="interactive",
-            history=["previous command", "another command"],
-            session_state={"user": "john", "cwd": "/home/john"},
+    def test_basic_session_state_creation(self) -> None:
+        """Test basic SessionState creation."""
+        session = SessionState(
+            parse_mode="interactive",
+            command_history=["previous command", "another command"],
+            variables={"user": "john", "cwd": "/home/john"},
         )
 
-        assert context.mode == "interactive"
-        assert context.history == ["previous command", "another command"]
-        assert context.session_state == {"user": "john", "cwd": "/home/john"}
+        assert session.parse_mode == "interactive"
+        assert session.command_history == ["previous command", "another command"]
+        assert session.variables == {"user": "john", "cwd": "/home/john"}
 
-    def test_empty_context(self) -> None:
-        """Test Context with minimal data."""
-        context = Context(mode="batch", history=[], session_state={})
+    def test_empty_session_state(self) -> None:
+        """Test SessionState with minimal data."""
+        session = SessionState(parse_mode="batch", command_history=[], variables={})
 
-        assert context.mode == "batch"
-        assert context.history == []
-        assert context.session_state == {}
+        assert session.parse_mode == "batch"
+        assert session.command_history == []
+        assert session.variables == {}
 
-    def test_context_with_rich_history(self) -> None:
-        """Test Context with extensive command history."""
+    def test_session_state_with_rich_history(self) -> None:
+        """Test SessionState with extensive command history."""
         history = [
             "git status",
             "git add .",
@@ -908,19 +908,19 @@ class TestContext:
             "ls -la",
         ]
 
-        context = Context(
-            mode="interactive",
-            history=history,
-            session_state={"branch": "main", "repo": "/path/to/repo"},
+        session = SessionState(
+            parse_mode="interactive",
+            command_history=history,
+            variables={"branch": "main", "repo": "/path/to/repo"},
         )
 
-        assert len(context.history) == 5
-        assert context.history[-1] == "ls -la"
-        assert context.session_state["branch"] == "main"
+        assert len(session.command_history) == 5
+        assert session.command_history[-1] == "ls -la"
+        assert session.variables["branch"] == "main"
 
-    def test_context_with_complex_session_state(self) -> None:
-        """Test Context with complex session state."""
-        session_state = {
+    def test_session_state_with_complex_variables(self) -> None:
+        """Test SessionState with complex variables."""
+        variables = {
             "user": {
                 "name": "John Doe",
                 "id": 12345,
@@ -934,48 +934,50 @@ class TestContext:
             "preferences": {"theme": "dark", "verbose": True, "auto_complete": True},
         }
 
-        context = Context(
-            mode="advanced", history=["config --list"], session_state=session_state
+        session = SessionState(
+            parse_mode="advanced",
+            command_history=["config --list"],
+            variables=variables,
         )
 
-        assert context.session_state["user"]["name"] == "John Doe"
-        assert context.session_state["environment"]["SHELL"] == "/bin/bash"
-        assert context.session_state["preferences"]["theme"] == "dark"
+        assert session.variables["user"]["name"] == "John Doe"
+        assert session.variables["environment"]["SHELL"] == "/bin/bash"
+        assert session.variables["preferences"]["theme"] == "dark"
 
     def test_different_modes(self) -> None:
-        """Test Context with different operating modes."""
+        """Test SessionState with different operating modes."""
         modes = ["interactive", "batch", "script", "debug", "test"]
 
         for mode in modes:
-            context = Context(
-                mode=mode,
-                history=[f"command in {mode} mode"],
-                session_state={"current_mode": mode},
+            session = SessionState(
+                parse_mode=mode,
+                command_history=[f"command in {mode} mode"],
+                variables={"current_mode": mode},
             )
 
-            assert context.mode == mode
-            assert context.session_state["current_mode"] == mode
+            assert session.parse_mode == mode
+            assert session.variables["current_mode"] == mode
 
     def test_history_operations(self) -> None:
         """Test common operations on command history."""
         initial_history = ["cmd1", "cmd2", "cmd3"]
-        context = Context(
-            mode="interactive",
-            history=initial_history.copy(),  # Copy to avoid mutation
-            session_state={},
+        session = SessionState(
+            parse_mode="interactive",
+            command_history=initial_history.copy(),  # Copy to avoid mutation
+            variables={},
         )
 
         # History should be accessible
-        assert len(context.history) == 3
-        assert context.history[0] == "cmd1"
-        assert context.history[-1] == "cmd3"
+        assert len(session.command_history) == 3
+        assert session.command_history[0] == "cmd1"
+        assert session.command_history[-1] == "cmd3"
 
         # Should be able to iterate
-        commands = list(context.history)
+        commands = list(session.command_history)
         assert commands == initial_history
 
     @pytest.mark.parametrize(
-        "mode,history,session",
+        "mode,history,variables",
         [
             ("interactive", [], {}),
             ("batch", ["batch_cmd"], {"batch": True}),
@@ -983,15 +985,17 @@ class TestContext:
             ("test", ["run tests", "check results"], {"test_suite": "unit"}),
         ],
     )
-    def test_parametrized_contexts(
-        self, mode: str, history: list[str], session: dict[str, Any]
+    def test_parametrized_session_states(
+        self, mode: str, history: list[str], variables: dict[str, Any]
     ) -> None:
-        """Test Context creation with various parameter combinations."""
-        context = Context(mode=mode, history=history, session_state=session)
+        """Test SessionState creation with various parameter combinations."""
+        session = SessionState(
+            parse_mode=mode, command_history=history, variables=variables
+        )
 
-        assert context.mode == mode
-        assert context.history == history
-        assert context.session_state == session
+        assert session.parse_mode == mode
+        assert session.command_history == history
+        assert session.variables == variables
 
 
 class TestTypeIntegration:
@@ -999,11 +1003,11 @@ class TestTypeIntegration:
 
     def test_complete_parse_workflow(self) -> None:
         """Test complete workflow using all types together."""
-        # Create context
-        context = Context(
-            mode="interactive",
-            history=["previous command"],
-            session_state={"user": "test_user"},
+        # Create session state
+        session = SessionState(
+            parse_mode="interactive",
+            command_history=["previous command"],
+            variables={"user": "test_user"},
         )
 
         # Create command args
@@ -1024,12 +1028,12 @@ class TestTypeIntegration:
         assert result.command == "process"
         assert result.args == args.positional
         assert result.options == args.named
-        assert context.mode == "interactive"
+        assert session.parse_mode == "interactive"
 
     def test_error_handling_integration(self) -> None:
         """Test error handling across type system."""
-        context = Context(
-            mode="strict", history=[], session_state={"strict_mode": True}
+        session = SessionState(
+            parse_mode="strict", command_history=[], variables={"strict_mode": True}
         )
 
         # Test that we can create and raise parse errors
@@ -1044,7 +1048,7 @@ class TestTypeIntegration:
 
         raised = exc_info.value
         assert raised.error_type == "INTEGRATION_TEST"
-        assert context.session_state["strict_mode"] is True
+        assert session.variables["strict_mode"] is True
 
     def test_complex_command_parsing_types(self) -> None:
         """Test types working together for complex commands."""
@@ -1067,28 +1071,28 @@ class TestTypeIntegration:
         assert "message" in result.options
         assert "author" in result.options
 
-        # Create context that might have influenced this parse
-        context = Context(
-            mode="git_integration",
-            history=["git status", "git add ."],
-            session_state={"git_repo": True, "current_branch": "feature/parser-types"},
+        # Create session state that might have influenced this parse
+        session = SessionState(
+            parse_mode="git_integration",
+            command_history=["git status", "git add ."],
+            variables={"git_repo": True, "current_branch": "feature/parser-types"},
         )
 
-        assert context.session_state["git_repo"] is True
-        assert len(context.history) == 2
+        assert session.variables["git_repo"] is True
+        assert len(session.command_history) == 2
 
     def test_type_consistency(self) -> None:
         """Test that all types maintain consistent behavior."""
         # All types should handle empty/minimal cases
         empty_result = ParseResult("", [], set(), {}, "")
         empty_args = CommandArgs([], {})
-        empty_context = Context("", [], {})
+        empty_session = SessionState(parse_mode="", command_history=[], variables={})
 
         assert empty_result.command == ""
         assert empty_args.positional == []
-        assert empty_context.mode == ""
+        assert empty_session.parse_mode == ""
 
         # All should handle their expected types correctly
         assert isinstance(empty_result.flags, set)
         assert isinstance(empty_args.named, dict)
-        assert isinstance(empty_context.history, list)
+        assert isinstance(empty_session.command_history, list)

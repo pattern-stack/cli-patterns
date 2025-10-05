@@ -11,10 +11,10 @@ from unittest.mock import patch
 
 import pytest
 
-from cli_patterns.ui.parser.pipeline import ParserPipeline
-
 # Import existing components
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.core.models import SessionState
+from cli_patterns.ui.parser.pipeline import ParserPipeline
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 # Import semantic types and components (these will fail initially)
 try:
@@ -83,10 +83,11 @@ class TestSemanticTypeEndToEndFlow:
                 make_context_key("session_start"): "2023-01-01T00:00:00Z",
             },
         )
+        session = context.to_session_state()
 
         # Process complex command
         input_command = 'git commit --message="Initial commit" --author="John Doe" -va file1.txt file2.txt'
-        result = pipeline.parse(input_command, context)
+        result = pipeline.parse(input_command, session)
 
         # Verify complete semantic type flow
         assert isinstance(result, SemanticParseResult)
@@ -138,11 +139,13 @@ class TestSemanticTypeEndToEndFlow:
         test_input = "deploy production --region=us-west-2 --force"
 
         # Parse with regular system
-        regular_context = Context("interactive", [], {})
+        regular_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
         regular_result = regular_pipeline.parse(test_input, regular_context)
 
         # Convert to semantic context and parse
-        semantic_context = SemanticContext.from_context(regular_context)
+        semantic_context = SemanticContext.from_session_state(regular_context)
         semantic_result = semantic_pipeline.parse(test_input, semantic_context)
 
         # Verify equivalent results
@@ -263,10 +266,11 @@ class TestSemanticTypeErrorFlowIntegration:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
         # Test error propagation
         with pytest.raises(SemanticParseError) as exc_info:
-            pipeline.parse("invalid-command arg1 arg2", context)
+            pipeline.parse("invalid-command arg1 arg2", session)
 
         error = exc_info.value
         assert error.error_type == "UNKNOWN_COMMAND"
@@ -297,10 +301,11 @@ class TestSemanticTypeErrorFlowIntegration:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
         # Test with typo that should generate suggestions
         with pytest.raises(SemanticParseError) as exc_info:
-            parser.parse("hlep", context)  # Typo for "help"
+            parser.parse("hlep", session)  # Typo for "help"
 
         error = exc_info.value
         assert error.error_type == "UNKNOWN_COMMAND"
@@ -475,10 +480,11 @@ class TestSemanticTypePerformanceIntegration:
                     history=[],
                     session_state={make_context_key("thread_id"): str(thread_id)},
                 )
+                session = context.to_session_state()
 
                 cmd_id = thread_id % 100  # Cycle through registered commands
                 input_str = f"cmd_{cmd_id} arg1 arg2"
-                result = parser.parse(input_str, context)
+                result = parser.parse(input_str, session)
                 return thread_id, result
             except Exception as e:
                 errors.append((thread_id, e))
@@ -536,13 +542,13 @@ class TestSemanticTypeBackwardCompatibility:
                 self.parser = regular_parser
 
             def can_parse(self, input_str: str, context: SemanticContext) -> bool:
-                regular_context = context.to_context()
+                regular_context = context.to_session_state()
                 return self.parser.can_parse(input_str, regular_context)
 
             def parse(
                 self, input_str: str, context: SemanticContext
             ) -> SemanticParseResult:
-                regular_context = context.to_context()
+                regular_context = context.to_session_state()
                 regular_result = self.parser.parse(input_str, regular_context)
                 return SemanticParseResult.from_parse_result(regular_result)
 

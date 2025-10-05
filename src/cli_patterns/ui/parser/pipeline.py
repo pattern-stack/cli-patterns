@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser.protocols import Parser
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 
 @dataclass
@@ -14,7 +15,7 @@ class _ParserEntry:
     """Internal entry for storing parser with metadata."""
 
     parser: Parser
-    condition: Optional[Callable[[str, Context], bool]]
+    condition: Optional[Callable[[str, SessionState], bool]]
     priority: int
 
 
@@ -32,7 +33,7 @@ class ParserPipeline:
     def add_parser(
         self,
         parser: Parser,
-        condition: Optional[Callable[[str, Context], bool]] = None,
+        condition: Optional[Callable[[str, SessionState], bool]] = None,
         priority: int = 0,
     ) -> None:
         """Add a parser to the pipeline.
@@ -72,12 +73,12 @@ class ParserPipeline:
                 return True
         return False
 
-    def parse(self, input_str: str, context: Context) -> ParseResult:
+    def parse(self, input_str: str, session: SessionState) -> ParseResult:
         """Parse input using the first matching parser in the pipeline.
 
         Args:
             input_str: Input string to parse
-            context: Parsing context
+            session: Current session state
 
         Returns:
             ParseResult from the first parser that can handle the input
@@ -100,12 +101,12 @@ class ParserPipeline:
             try:
                 # Check condition if provided
                 if entry.condition is not None:
-                    if not entry.condition(input_str, context):
+                    if not entry.condition(input_str, session):
                         continue
 
                 # Check if parser can handle the input
                 if hasattr(entry.parser, "can_parse"):
-                    if entry.parser.can_parse(input_str, context):
+                    if entry.parser.can_parse(input_str, session):
                         matching_parsers.append(entry)
                 else:
                     # If no can_parse method, assume it can handle it
@@ -134,7 +135,7 @@ class ParserPipeline:
         parser_entry = matching_parsers[0]
 
         try:
-            return parser_entry.parser.parse(input_str, context)
+            return parser_entry.parser.parse(input_str, session)
         except ParseError:
             # Re-raise parse errors from the parser
             raise

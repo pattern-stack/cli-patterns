@@ -6,9 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser.pipeline import ParserPipeline
 from cli_patterns.ui.parser.protocols import Parser
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 pytestmark = pytest.mark.parser
 
@@ -22,9 +23,9 @@ class TestParserPipeline:
         return ParserPipeline()
 
     @pytest.fixture
-    def context(self) -> Context:
+    def session(self) -> SessionState:
         """Create basic context for testing."""
-        return Context(mode="interactive", history=[], session_state={})
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_pipeline_instantiation(self, pipeline: ParserPipeline) -> None:
         """Test that ParserPipeline can be instantiated."""
@@ -32,11 +33,11 @@ class TestParserPipeline:
         assert isinstance(pipeline, ParserPipeline)
 
     def test_empty_pipeline_parsing(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test that empty pipeline raises error."""
         with pytest.raises(ParseError) as exc_info:
-            pipeline.parse("test input", context)
+            pipeline.parse("test input", session)
 
         error = exc_info.value
         assert error.error_type in ["NO_PARSERS", "PARSE_FAILED"]
@@ -45,7 +46,7 @@ class TestParserPipeline:
         """Test adding a parser to pipeline."""
         mock_parser = Mock(spec=Parser)
 
-        def condition(input, context):
+        def condition(input, session):
             return True
 
         pipeline.add_parser(mock_parser, condition)
@@ -59,13 +60,13 @@ class TestParserPipeline:
         parser2 = Mock(spec=Parser)
         parser3 = Mock(spec=Parser)
 
-        def condition1(input, context):
+        def condition1(input, session):
             return input.startswith("cmd1")
 
-        def condition2(input, context):
+        def condition2(input, session):
             return input.startswith("cmd2")
 
-        def condition3(input, context):
+        def condition3(input, session):
             return True  # Fallback
 
         pipeline.add_parser(parser1, condition1)
@@ -83,11 +84,11 @@ class TestParserPipelineRouting:
         return ParserPipeline()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_parser_selection_by_condition(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test that correct parser is selected based on condition."""
         # Create mock parsers
@@ -103,15 +104,15 @@ class TestParserPipelineRouting:
         pipeline.add_parser(text_parser, lambda input, ctx: not input.startswith("!"))
 
         # Test routing to text parser
-        result = pipeline.parse("test input", context)
+        result = pipeline.parse("test input", session)
 
         # Text parser should have been called
-        text_parser.parse.assert_called_once_with("test input", context)
+        text_parser.parse.assert_called_once_with("test input", session)
         shell_parser.parse.assert_not_called()
         assert result == expected_result
 
     def test_parser_selection_shell_command(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test routing to shell parser for shell commands."""
         text_parser = Mock(spec=Parser)
@@ -127,14 +128,14 @@ class TestParserPipelineRouting:
         pipeline.add_parser(text_parser, lambda input, ctx: not input.startswith("!"))
 
         # Test routing to shell parser
-        result = pipeline.parse("!ls -la", context)
+        result = pipeline.parse("!ls -la", session)
 
-        shell_parser.parse.assert_called_once_with("!ls -la", context)
+        shell_parser.parse.assert_called_once_with("!ls -la", session)
         text_parser.parse.assert_not_called()
         assert result == expected_result
 
     def test_first_matching_parser_wins(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test that first matching parser is used."""
         parser1 = Mock(spec=Parser)
@@ -153,7 +154,7 @@ class TestParserPipelineRouting:
         pipeline.add_parser(parser2, condition_all)
         pipeline.add_parser(parser3, condition_all)
 
-        result = pipeline.parse("test", context)
+        result = pipeline.parse("test", session)
 
         # Only first parser should be called
         parser1.parse.assert_called_once()
@@ -162,7 +163,7 @@ class TestParserPipelineRouting:
         assert result == expected_result
 
     def test_fallback_to_later_parser(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test fallback when first parser condition doesn't match."""
         specific_parser = Mock(spec=Parser)
@@ -177,11 +178,11 @@ class TestParserPipelineRouting:
         )
         pipeline.add_parser(fallback_parser, lambda input, ctx: True)
 
-        result = pipeline.parse("general command", context)
+        result = pipeline.parse("general command", session)
 
         # Should skip specific parser and use fallback
         specific_parser.parse.assert_not_called()
-        fallback_parser.parse.assert_called_once_with("general command", context)
+        fallback_parser.parse.assert_called_once_with("general command", session)
         assert result == expected_result
 
     @pytest.mark.parametrize(
@@ -196,7 +197,7 @@ class TestParserPipelineRouting:
     def test_parametrized_routing(
         self,
         pipeline: ParserPipeline,
-        context: Context,
+        session: SessionState,
         input_text: str,
         expected_parser_index: int,
     ) -> None:
@@ -221,11 +222,11 @@ class TestParserPipelineRouting:
         for parser, condition in zip(parsers, conditions):
             pipeline.add_parser(parser, condition)
 
-        pipeline.parse(input_text, context)
+        pipeline.parse(input_text, session)
 
         # Check that correct parser was called
         expected_parser = parsers[expected_parser_index]
-        expected_parser.parse.assert_called_once_with(input_text, context)
+        expected_parser.parse.assert_called_once_with(input_text, session)
 
 
 class TestParserPipelineConditions:
@@ -236,11 +237,11 @@ class TestParserPipelineConditions:
         return ParserPipeline()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_simple_prefix_condition(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test simple prefix-based condition."""
         parser = Mock(spec=Parser)
@@ -252,17 +253,17 @@ class TestParserPipelineConditions:
         pipeline.add_parser(parser, condition)
 
         # Should match
-        pipeline.parse("test input", context)
+        pipeline.parse("test input", session)
         parser.parse.assert_called_once()
 
         # Reset mock and test non-match
         parser.reset_mock()
         with pytest.raises(ParseError):
-            pipeline.parse("other input", context)
+            pipeline.parse("other input", session)
         parser.parse.assert_not_called()
 
     def test_regex_based_condition(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test regex-based condition."""
         import re
@@ -277,13 +278,13 @@ class TestParserPipelineConditions:
         pipeline.add_parser(parser, condition)
 
         # Should match
-        pipeline.parse("cmd123", context)
+        pipeline.parse("cmd123", session)
         parser.parse.assert_called_once()
 
         # Should not match
         parser.reset_mock()
         with pytest.raises(ParseError):
-            pipeline.parse("command", context)
+            pipeline.parse("command", session)
 
     def test_context_aware_condition(self, pipeline: ParserPipeline) -> None:
         """Test condition that uses context information."""
@@ -292,18 +293,26 @@ class TestParserPipelineConditions:
 
         # Condition checks session state
         def condition(input, ctx):
-            return ctx.session_state.get("user_role") == "admin"
+            return ctx.variables.get("user_role") == "admin"
 
         pipeline.add_parser(parser, condition)
 
         # Test with admin context
-        admin_context = Context("interactive", [], {"user_role": "admin"})
+        admin_context = SessionState(
+            parse_mode="interactive",
+            command_history=[],
+            variables={"user_role": "admin"},
+        )
         pipeline.parse("admin command", admin_context)
         parser.parse.assert_called_once()
 
         # Test with regular user context
         parser.reset_mock()
-        user_context = Context("interactive", [], {"user_role": "user"})
+        user_context = SessionState(
+            parse_mode="interactive",
+            command_history=[],
+            variables={"user_role": "user"},
+        )
         with pytest.raises(ParseError):
             pipeline.parse("admin command", user_context)
 
@@ -315,23 +324,27 @@ class TestParserPipelineConditions:
         )
 
         def condition(input, ctx):
-            return ctx.mode == "debug"
+            return ctx.parse_mode == "debug"
 
         pipeline.add_parser(debug_parser, condition)
 
         # Should work in debug mode
-        debug_context = Context("debug", [], {})
+        debug_context = SessionState(
+            parse_mode="debug", command_history=[], variables={}
+        )
         pipeline.parse("debug cmd", debug_context)
         debug_parser.parse.assert_called_once()
 
         # Should not work in other modes
         debug_parser.reset_mock()
-        normal_context = Context("interactive", [], {})
+        normal_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
         with pytest.raises(ParseError):
             pipeline.parse("debug cmd", normal_context)
 
     def test_complex_compound_condition(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test complex compound condition."""
         parser = Mock(spec=Parser)
@@ -341,20 +354,26 @@ class TestParserPipelineConditions:
         def condition(input, ctx):
             return (
                 input.startswith("api")
-                and "auth_token" in ctx.session_state
+                and "auth_token" in ctx.variables
                 and len(input.split()) > 1
             )
 
         pipeline.add_parser(parser, condition)
 
         # Should match
-        auth_context = Context("interactive", [], {"auth_token": "abc123"})
+        auth_context = SessionState(
+            parse_mode="interactive",
+            command_history=[],
+            variables={"auth_token": "abc123"},
+        )
         pipeline.parse("api get users", auth_context)
         parser.parse.assert_called_once()
 
         # Should not match - no auth token
         parser.reset_mock()
-        no_auth_context = Context("interactive", [], {})
+        no_auth_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
         with pytest.raises(ParseError):
             pipeline.parse("api get users", no_auth_context)
 
@@ -372,20 +391,22 @@ class TestParserPipelineContextPassing:
         parser.parse.return_value = ParseResult("test", [], set(), {}, "input")
 
         # Condition that modifies context (for testing purposes)
-        def condition_with_context(input: str, ctx: Context) -> bool:
+        def condition_with_context(input: str, ctx: SessionState) -> bool:
             # Verify context has expected attributes
-            assert hasattr(ctx, "mode")
-            assert hasattr(ctx, "history")
-            assert hasattr(ctx, "session_state")
+            assert hasattr(ctx, "parse_mode")
+            assert hasattr(ctx, "command_history")
+            assert hasattr(ctx, "variables")
             return input == "test"
 
         pipeline.add_parser(parser, condition_with_context)
 
-        context = Context("test_mode", ["prev"], {"key": "value"})
-        pipeline.parse("test", context)
+        session = SessionState(
+            parse_mode="test_mode", command_history=["prev"], variables={"key": "value"}
+        )
+        pipeline.parse("test", session)
 
         # Should succeed without assertion errors
-        parser.parse.assert_called_once_with("test", context)
+        parser.parse.assert_called_once_with("test", session)
 
     def test_context_passed_to_parser(self, pipeline: ParserPipeline) -> None:
         """Test that original context is passed to parser."""
@@ -394,7 +415,11 @@ class TestParserPipelineContextPassing:
 
         pipeline.add_parser(parser, lambda input, ctx: True)
 
-        original_context = Context("original", ["cmd1", "cmd2"], {"user": "test"})
+        original_context = SessionState(
+            parse_mode="original",
+            command_history=["cmd1", "cmd2"],
+            variables={"user": "test"},
+        )
         pipeline.parse("test input", original_context)
 
         # Parser should receive the exact same context
@@ -407,17 +432,19 @@ class TestParserPipelineContextPassing:
 
         pipeline.add_parser(parser, lambda input, ctx: True)
 
-        original_context = Context("mode", ["history"], {"state": "value"})
-        original_mode = original_context.mode
-        original_history = original_context.history.copy()
-        original_state = original_context.session_state.copy()
+        original_context = SessionState(
+            parse_mode="mode", command_history=["history"], variables={"state": "value"}
+        )
+        original_mode = original_context.parse_mode
+        original_history = original_context.command_history.copy()
+        original_state = original_context.variables.copy()
 
         pipeline.parse("test", original_context)
 
         # Context should be unchanged
-        assert original_context.mode == original_mode
-        assert original_context.history == original_history
-        assert original_context.session_state == original_state
+        assert original_context.parse_mode == original_mode
+        assert original_context.command_history == original_history
+        assert original_context.variables == original_state
 
 
 class TestParserPipelineErrorHandling:
@@ -428,11 +455,11 @@ class TestParserPipelineErrorHandling:
         return ParserPipeline()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_no_matching_parser_error(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test error when no parser matches."""
         parser1 = Mock(spec=Parser)
@@ -443,13 +470,13 @@ class TestParserPipelineErrorHandling:
         pipeline.add_parser(parser2, lambda input, ctx: input.startswith("special2"))
 
         with pytest.raises(ParseError) as exc_info:
-            pipeline.parse("nomatch", context)
+            pipeline.parse("nomatch", session)
 
         error = exc_info.value
         assert error.error_type in ["NO_MATCHING_PARSER", "PARSE_FAILED"]
 
     def test_parser_exception_propagation(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test that parser exceptions are propagated."""
         parser = Mock(spec=Parser)
@@ -458,32 +485,32 @@ class TestParserPipelineErrorHandling:
         pipeline.add_parser(parser, lambda input, ctx: True)
 
         with pytest.raises(ParseError) as exc_info:
-            pipeline.parse("test", context)
+            pipeline.parse("test", session)
 
         error = exc_info.value
         assert error.error_type == "TEST_ERROR"
         assert error.message == "Test error message"
 
     def test_condition_exception_handling(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test handling of exceptions in condition functions."""
         parser = Mock(spec=Parser)
 
-        def failing_condition(input: str, ctx: Context) -> bool:
+        def failing_condition(input: str, ctx: SessionState) -> bool:
             raise ValueError("Condition failed")
 
         pipeline.add_parser(parser, failing_condition)
 
         # Should handle condition exceptions gracefully
         with pytest.raises(ParseError):
-            pipeline.parse("test", context)
+            pipeline.parse("test", session)
 
         # Should not call parser if condition fails
         parser.parse.assert_not_called()
 
     def test_multiple_condition_failures(
-        self, pipeline: ParserPipeline, context: Context
+        self, pipeline: ParserPipeline, session: SessionState
     ) -> None:
         """Test handling when multiple conditions fail."""
         parser1 = Mock(spec=Parser)
@@ -491,13 +518,13 @@ class TestParserPipelineErrorHandling:
         parser3 = Mock(spec=Parser)
 
         # All conditions raise exceptions
-        def failing_condition1(input: str, ctx: Context) -> bool:
+        def failing_condition1(input: str, ctx: SessionState) -> bool:
             raise ValueError("Condition 1 failed")
 
-        def failing_condition2(input: str, ctx: Context) -> bool:
+        def failing_condition2(input: str, ctx: SessionState) -> bool:
             raise RuntimeError("Condition 2 failed")
 
-        def failing_condition3(input: str, ctx: Context) -> bool:
+        def failing_condition3(input: str, ctx: SessionState) -> bool:
             return False  # This one just returns False
 
         pipeline.add_parser(parser1, failing_condition1)
@@ -505,7 +532,7 @@ class TestParserPipelineErrorHandling:
         pipeline.add_parser(parser3, failing_condition3)
 
         with pytest.raises(ParseError):
-            pipeline.parse("test", context)
+            pipeline.parse("test", session)
 
         # No parsers should be called
         parser1.parse.assert_not_called()
@@ -538,8 +565,8 @@ class TestParserPipelineAdvancedFeatures:
         pipeline.add_parser(medium_priority, condition_all)
         pipeline.add_parser(low_priority, condition_all)
 
-        context = Context("test", [], {})
-        result = pipeline.parse("test", context)
+        session = SessionState(parse_mode="test", command_history=[], variables={})
+        result = pipeline.parse("test", session)
 
         # Only high priority should be called
         high_priority.parse.assert_called_once()
@@ -563,28 +590,34 @@ class TestParserPipelineAdvancedFeatures:
 
         # Add parsers with role-based conditions
         pipeline.add_parser(
-            admin_parser, lambda input, ctx: ctx.session_state.get("role") == "admin"
+            admin_parser, lambda input, ctx: ctx.variables.get("role") == "admin"
         )
         pipeline.add_parser(
-            user_parser, lambda input, ctx: ctx.session_state.get("role") == "user"
+            user_parser, lambda input, ctx: ctx.variables.get("role") == "user"
         )
         pipeline.add_parser(
             guest_parser,
-            lambda input, ctx: ctx.session_state.get("role", "guest") == "guest",
+            lambda input, ctx: ctx.variables.get("role", "guest") == "guest",
         )
 
         # Test admin context
-        admin_context = Context("interactive", [], {"role": "admin"})
+        admin_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={"role": "admin"}
+        )
         result = pipeline.parse("admin cmd", admin_context)
         assert result == admin_result
 
         # Test user context
-        user_context = Context("interactive", [], {"role": "user"})
+        user_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={"role": "user"}
+        )
         result = pipeline.parse("user cmd", user_context)
         assert result == user_result
 
         # Test guest context (no role specified)
-        guest_context = Context("interactive", [], {})
+        guest_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
         result = pipeline.parse("guest cmd", guest_context)
         assert result == guest_result
 
@@ -618,18 +651,20 @@ class TestParserPipelineAdvancedFeatures:
             lambda input, ctx: True,  # Fallback for plain text
         )
 
-        context = Context("interactive", [], {})
+        session = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
 
         # Test JSON input
-        result = pipeline.parse('{"key": "value"}', context)
+        result = pipeline.parse('{"key": "value"}', session)
         assert result == json_result
 
         # Test XML input
-        result = pipeline.parse("<root></root>", context)
+        result = pipeline.parse("<root></root>", session)
         assert result == xml_result
 
         # Test plain text input
-        result = pipeline.parse("plain text", context)
+        result = pipeline.parse("plain text", session)
         assert result == text_result
 
 
@@ -662,16 +697,18 @@ class TestParserPipelineIntegration:
         pipeline.add_parser(shell_parser, lambda input, ctx: input.startswith("!"))
         pipeline.add_parser(text_parser, lambda input, ctx: True)
 
-        context = Context("interactive", [], {})
+        session = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
 
         # Test all parser types
-        help_result_actual = pipeline.parse("help", context)
+        help_result_actual = pipeline.parse("help", session)
         assert help_result_actual == help_result
 
-        shell_result_actual = pipeline.parse("!ls -la", context)
+        shell_result_actual = pipeline.parse("!ls -la", session)
         assert shell_result_actual == shell_result
 
-        text_result_actual = pipeline.parse("echo hello", context)
+        text_result_actual = pipeline.parse("echo hello", session)
         assert text_result_actual == text_result
 
     def test_pipeline_with_error_recovery(self) -> None:
@@ -693,17 +730,19 @@ class TestParserPipelineIntegration:
         pipeline.add_parser(strict_parser, lambda input, ctx: len(input) > 5)
         pipeline.add_parser(fallback_parser, lambda input, ctx: True)
 
-        context = Context("interactive", [], {})
+        session = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
 
         # Long input should try strict parser first, fail, then NOT try fallback
         # (because pipeline stops at first matching condition)
         with pytest.raises(ParseError):
-            pipeline.parse("long input text", context)
+            pipeline.parse("long input text", session)
 
         # Short input should go directly to fallback
-        result = pipeline.parse("short", context)
+        result = pipeline.parse("short", session)
         assert result == fallback_result
-        fallback_parser.parse.assert_called_with("short", context)
+        fallback_parser.parse.assert_called_with("short", session)
 
     def test_end_to_end_pipeline_workflow(self) -> None:
         """Test complete end-to-end pipeline workflow."""
@@ -728,24 +767,24 @@ class TestParserPipelineIntegration:
         )
 
         # Create rich context
-        context = Context(
-            mode="interactive",
-            history=["previous command"],
-            session_state={"user": "testuser", "session_id": "12345"},
+        session = SessionState(
+            parse_mode="interactive",
+            command_history=["previous command"],
+            variables={"user": "testuser", "session_id": "12345"},
         )
 
         # Test shell command
-        shell_result_actual = pipeline.parse("!echo test", context)
+        shell_result_actual = pipeline.parse("!echo test", session)
         assert shell_result_actual.command == "!"
         assert hasattr(shell_result_actual, "shell_command")
 
         # Test regular command
-        command_result_actual = pipeline.parse("status", context)
+        command_result_actual = pipeline.parse("status", session)
         assert command_result_actual.command == "status"
 
         # Test unmatched input
         with pytest.raises(ParseError) as exc_info:
-            pipeline.parse("unknown command", context)
+            pipeline.parse("unknown command", session)
 
         error = exc_info.value
         assert isinstance(error, ParseError)

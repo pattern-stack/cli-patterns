@@ -7,8 +7,9 @@ from unittest.mock import Mock
 
 import pytest
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser.protocols import Parser
-from cli_patterns.ui.parser.types import Context, ParseResult
+from cli_patterns.ui.parser.types import ParseResult
 
 pytestmark = pytest.mark.parser
 
@@ -21,10 +22,10 @@ class TestParserProtocol:
 
         # Test the actual functionality: isinstance checking should work
         class ValidImplementation:
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("test", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -68,10 +69,10 @@ class TestParserProtocol:
         class ValidParser:
             """A valid parser implementation for testing."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult(
                     command=input, args=[], flags=set(), options={}, raw_input=input
                 )
@@ -87,9 +88,11 @@ class TestParserProtocol:
         assert hasattr(parser, "get_suggestions") and callable(parser.get_suggestions)
 
         # Test that the methods work as expected
-        context = Context()
-        assert parser.can_parse("test", context) is True
-        result = parser.parse("test", context)
+        session = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
+        assert parser.can_parse("test", session) is True
+        result = parser.parse("test", session)
         assert result.command == "test"
         suggestions = parser.get_suggestions("partial")
         assert isinstance(suggestions, list)
@@ -100,7 +103,7 @@ class TestParserProtocol:
         class IncompleteParser:
             """An incomplete parser missing required methods."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
             # Missing parse() and get_suggestions() methods
@@ -123,7 +126,7 @@ class TestParserProtocol:
             def can_parse(self, input: str) -> bool:  # Missing context parameter
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -141,10 +144,10 @@ class TestParserProtocol:
         class DuckTypedParser:
             """A duck-typed parser that should work at runtime."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return "test" in input.lower()
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult(
                     command="test",
                     args=[input],
@@ -157,11 +160,11 @@ class TestParserProtocol:
                 return ["test_command", "test_runner"]
 
         parser = DuckTypedParser()
-        context = Context(mode="test", history=[], session_state={})
+        session = SessionState(parse_mode="test", command_history=[], variables={})
 
         # Should work as a Parser at runtime
-        assert parser.can_parse("test input", context)
-        result = parser.parse("test input", context)
+        assert parser.can_parse("test input", session)
+        result = parser.parse("test input", session)
         assert result.command == "test"
         suggestions = parser.get_suggestions("test")
         assert isinstance(suggestions, list)
@@ -177,29 +180,31 @@ class TestParserBehaviorContract:
         return parser
 
     @pytest.fixture
-    def sample_context(self) -> Context:
-        """Create a sample context for testing."""
-        return Context(
-            mode="interactive",
-            history=["previous command"],
-            session_state={"user": "test"},
+    def sample_session(self) -> SessionState:
+        """Create a sample session for testing."""
+        return SessionState(
+            parse_mode="interactive",
+            command_history=["previous command"],
+            variables={"user": "test"},
         )
 
     def test_can_parse_contract(
-        self, mock_parser: Mock, sample_context: Context
+        self, mock_parser: Mock, sample_session: SessionState
     ) -> None:
         """Test can_parse method contract."""
         # Configure mock
         mock_parser.can_parse.return_value = True
 
         # Test method call
-        result = mock_parser.can_parse("test input", sample_context)
+        result = mock_parser.can_parse("test input", sample_session)
 
         # Verify call and return type
-        mock_parser.can_parse.assert_called_once_with("test input", sample_context)
+        mock_parser.can_parse.assert_called_once_with("test input", sample_session)
         assert isinstance(result, bool)
 
-    def test_parse_contract(self, mock_parser: Mock, sample_context: Context) -> None:
+    def test_parse_contract(
+        self, mock_parser: Mock, sample_session: SessionState
+    ) -> None:
         """Test parse method contract."""
         # Configure mock return value
         expected_result = ParseResult(
@@ -212,11 +217,11 @@ class TestParserBehaviorContract:
         mock_parser.parse.return_value = expected_result
 
         # Test method call
-        result = mock_parser.parse("test -f --opt=val arg", sample_context)
+        result = mock_parser.parse("test -f --opt=val arg", sample_session)
 
         # Verify call and return type
         mock_parser.parse.assert_called_once_with(
-            "test -f --opt=val arg", sample_context
+            "test -f --opt=val arg", sample_session
         )
         assert isinstance(result, ParseResult)
         assert result == expected_result
@@ -244,17 +249,17 @@ class TestParserBehaviorContract:
         assert isinstance(result, list)
         assert len(result) == 0
 
-    def test_parser_method_chaining(self, sample_context: Context) -> None:
+    def test_parser_method_chaining(self, sample_session: SessionState) -> None:
         """Test typical parser usage pattern."""
 
         class TestParser:
             """Test parser for method chaining."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return input.startswith("test")
 
-            def parse(self, input: str, context: Context) -> ParseResult:
-                if not self.can_parse(input, context):
+            def parse(self, input: str, session: SessionState) -> ParseResult:
+                if not self.can_parse(input, session):
                     raise ValueError("Cannot parse input")
 
                 return ParseResult(
@@ -276,11 +281,11 @@ class TestParserBehaviorContract:
         input_text = "test argument"
 
         # First check if parser can handle input
-        can_parse = parser.can_parse(input_text, sample_context)
+        can_parse = parser.can_parse(input_text, sample_session)
         assert can_parse is True
 
         # Then parse if possible
-        result = parser.parse(input_text, sample_context)
+        result = parser.parse(input_text, sample_session)
         assert result.command == "test"
         assert result.args == ["argument"]
 
@@ -288,20 +293,20 @@ class TestParserBehaviorContract:
         suggestions = parser.get_suggestions("te")
         assert "test" in suggestions
 
-    def test_parser_error_handling_contract(self, sample_context: Context) -> None:
+    def test_parser_error_handling_contract(self, sample_session: SessionState) -> None:
         """Test that parsers handle errors appropriately."""
 
         class ErrorHandlingParser:
             """Parser that demonstrates error handling."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 # Should not raise exceptions, just return boolean
                 try:
                     return len(input.strip()) > 0
                 except Exception:
                     return False
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 # Should raise appropriate exceptions for invalid input
                 if not input.strip():
                     raise ValueError("Empty input cannot be parsed")
@@ -323,12 +328,12 @@ class TestParserBehaviorContract:
         parser = ErrorHandlingParser()
 
         # Test can_parse doesn't raise
-        assert parser.can_parse("valid", sample_context) is True
-        assert parser.can_parse("", sample_context) is False
+        assert parser.can_parse("valid", sample_session) is True
+        assert parser.can_parse("", sample_session) is False
 
         # Test parse raises for invalid input
         with pytest.raises(ValueError):
-            parser.parse("", sample_context)
+            parser.parse("", sample_session)
 
         # Test get_suggestions handles edge cases
         assert parser.get_suggestions("") == []
@@ -342,10 +347,10 @@ class TestProtocolRuntimeChecking:
         """Test isinstance checking with Parser protocol."""
 
         class CompliantParser:
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -379,10 +384,10 @@ class TestProtocolRuntimeChecking:
         class ExtendedParser:
             """Parser with additional utility methods."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("extended", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -413,10 +418,10 @@ class TestProtocolRuntimeChecking:
         class BaseParser:
             """Base parser class."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return False
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 raise NotImplementedError
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -425,10 +430,10 @@ class TestProtocolRuntimeChecking:
         class ConcreteParser(BaseParser):
             """Concrete parser inheriting from base."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return "concrete" in input
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("concrete", [], set(), {}, input)
 
         # Both should have protocol methods
@@ -448,9 +453,9 @@ class TestProtocolRuntimeChecking:
         )
 
         # Behavior should be as expected
-        context = Context("test", [], {})
-        assert not base.can_parse("test", context)
-        assert concrete.can_parse("concrete test", context)
+        session = SessionState(parse_mode="test", command_history=[], variables={})
+        assert not base.can_parse("test", session)
+        assert concrete.can_parse("concrete test", session)
 
 
 class TestProtocolDocumentation:
@@ -475,10 +480,10 @@ class TestProtocolDocumentation:
 
         # Should support runtime type checking (the actual purpose of @runtime_checkable)
         class TestImplementation:
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("test", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
@@ -495,10 +500,10 @@ class TestParserProtocolEdgeCases:
         """Test parser that might return None values."""
 
         class EdgeCaseParser:
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return input is not None
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 # Always returns valid ParseResult, never None
                 return ParseResult("edge", [], set(), {}, input or "")
 
@@ -507,11 +512,11 @@ class TestParserProtocolEdgeCases:
                 return [] if partial is None else ["suggestion"]
 
         parser = EdgeCaseParser()
-        context = Context("test", [], {})
+        session = SessionState(parse_mode="test", command_history=[], variables={})
 
         # Should handle edge cases gracefully
-        assert parser.can_parse("", context) is True
-        result = parser.parse("", context)
+        assert parser.can_parse("", session) is True
+        result = parser.parse("", session)
         assert isinstance(result, ParseResult)
 
         suggestions = parser.get_suggestions("")
@@ -530,10 +535,10 @@ class TestParserProtocolEdgeCases:
         class HybridParser(AsyncParserMixin):
             """Parser with both sync and async methods."""
 
-            def can_parse(self, input: str, context: Context) -> bool:
+            def can_parse(self, input: str, session: SessionState) -> bool:
                 return True
 
-            def parse(self, input: str, context: Context) -> ParseResult:
+            def parse(self, input: str, session: SessionState) -> ParseResult:
                 return ParseResult("hybrid", [], set(), {}, input)
 
             def get_suggestions(self, partial: str) -> list[str]:
