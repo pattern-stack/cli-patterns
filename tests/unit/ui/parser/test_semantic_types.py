@@ -12,7 +12,8 @@ from unittest.mock import Mock
 import pytest
 
 # Import existing parser types
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.core.models import SessionState
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 # Import semantic types (these will fail initially)
 try:
@@ -245,13 +246,13 @@ class TestSemanticContext:
         WHEN: Converting to SemanticContext
         THEN: All string values are converted to semantic types
         """
-        regular_context = Context(
-            mode="interactive",
-            history=["help", "status"],
-            session_state={"user": "john", "role": "admin"},
+        regular_context = SessionState(
+            parse_mode="interactive",
+            command_history=["help", "status"],
+            variables={"user": "john", "role": "admin"},
         )
 
-        semantic_context = SemanticContext.from_context(regular_context)
+        semantic_context = SemanticContext.from_session_state(regular_context)
 
         # Check mode conversion
         assert str(semantic_context.mode) == "interactive"
@@ -285,12 +286,13 @@ class TestSemanticParserProtocol:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
         # Basic text input
-        assert parser.can_parse("help", context)
-        assert parser.can_parse("git commit -m 'test'", context)
-        assert not parser.can_parse("", context)
-        assert not parser.can_parse("   ", context)
+        assert parser.can_parse("help", session)
+        assert parser.can_parse("git commit -m 'test'", session)
+        assert not parser.can_parse("", session)
+        assert not parser.can_parse("   ", session)
 
     def test_semantic_parser_parse_result(self) -> None:
         """
@@ -304,8 +306,9 @@ class TestSemanticParserProtocol:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
-        result = parser.parse("git commit --message='Initial commit' -v", context)
+        result = parser.parse("git commit --message='Initial commit' -v", session)
 
         # Check result types
         assert isinstance(result, SemanticParseResult)
@@ -350,9 +353,10 @@ class TestSemanticParserProtocol:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("", context)
+            parser.parse("", session)
 
         error = exc_info.value
         assert error.error_type in ["EMPTY_INPUT", "INVALID_INPUT"]
@@ -474,8 +478,9 @@ class TestSemanticPipelineIntegration:
         context = SemanticContext(
             mode=make_parse_mode("interactive"), history=[], session_state={}
         )
+        session = context.to_session_state()
 
-        result = pipeline.parse("help status", context)
+        result = pipeline.parse("help status", session)
 
         assert isinstance(result, SemanticParseResult)
         assert str(result.command) == "help"

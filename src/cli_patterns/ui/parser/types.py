@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 from rich.console import Group, RenderableType
 from rich.text import Text
@@ -209,51 +209,12 @@ class ParseError(Exception):
             return HierarchyToken.TERTIARY  # Possible match
 
 
-@dataclass
-class Context:
-    """Parsing context containing session state and history.
-
-    Attributes:
-        mode: Current parsing mode (e.g., 'interactive', 'batch')
-        history: Command history list
-        session_state: Dictionary of session state data
-        current_directory: Current working directory (optional)
-    """
-
-    mode: str = "text"
-    history: list[str] = field(default_factory=list)
-    session_state: dict[str, Any] = field(default_factory=dict)
-    current_directory: Optional[str] = None
-
-    def add_to_history(self, command: str) -> None:
-        """Add command to history.
-
-        Args:
-            command: Command string to add to history
-        """
-        self.history.append(command)
-
-    def get_state(self, key: str, default: Any = None) -> Any:
-        """Get session state value by key.
-
-        Args:
-            key: State key to retrieve
-            default: Default value if key doesn't exist
-
-        Returns:
-            State value or default
-        """
-        return self.session_state.get(key, default)
-
-    def set_state(self, key: str, value: Any) -> None:
-        """Set session state value.
-
-        Args:
-            key: State key to set
-            value: Value to set
-        """
-        self.session_state[key] = value
-
-    def clear_history(self) -> None:
-        """Clear command history."""
-        self.history.clear()
+# NOTE: The parser system now uses the unified SessionState from cli_patterns.core.models
+# instead of a parser-specific Context type. SessionState provides:
+#   - parse_mode: str (replaces mode)
+#   - command_history: list[str] (replaces history)
+#   - variables: dict[str, StateValue] (replaces session_state)
+#   - Plus wizard-specific fields (current_branch, navigation_history, option_values)
+#
+# For backward compatibility during migration, import SessionState from core.models:
+#   from cli_patterns.core.models import SessionState

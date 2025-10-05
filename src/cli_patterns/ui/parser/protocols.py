@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-# Always import types that are needed for runtime checking
-from cli_patterns.ui.parser.types import Context, ParseResult
+from cli_patterns.core.models import SessionState
+from cli_patterns.ui.parser.types import ParseResult
 
 
 @runtime_checkable
@@ -17,24 +17,24 @@ class Parser(Protocol):
     execution system.
     """
 
-    def can_parse(self, input: str, context: Context) -> bool:
+    def can_parse(self, input: str, session: SessionState) -> bool:
         """Determine if this parser can handle the given input.
 
         Args:
             input: Raw input string to evaluate
-            context: Current parsing context with mode, history, and state
+            session: Current session state with parse mode, history, and variables
 
         Returns:
             True if this parser can handle the input, False otherwise
         """
         ...
 
-    def parse(self, input: str, context: Context) -> ParseResult:
+    def parse(self, input: str, session: SessionState) -> ParseResult:
         """Parse the input string into a structured ParseResult.
 
         Args:
             input: Raw input string to parse
-            context: Current parsing context with mode, history, and state
+            session: Current session state with parse mode, history, and variables
 
         Returns:
             ParseResult containing parsed command, args, flags, and options

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser.parsers import ShellParser
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 pytestmark = pytest.mark.parser
 
@@ -19,9 +20,9 @@ class TestShellParserBasics:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
+    def session(self) -> SessionState:
         """Create basic context for testing."""
-        return Context(mode="interactive", history=[], session_state={})
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_parser_instantiation(self, parser: ShellParser) -> None:
         """Test that ShellParser can be instantiated."""
@@ -39,30 +40,34 @@ class TestShellParserBasics:
         assert callable(parser.get_suggestions)
 
     def test_shell_command_detection(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that shell commands are properly detected."""
         # Shell commands start with !
-        assert parser.can_parse("!ls -la", context) is True
-        assert parser.can_parse("!pwd", context) is True
-        assert parser.can_parse("!echo hello", context) is True
+        assert parser.can_parse("!ls -la", session) is True
+        assert parser.can_parse("!pwd", session) is True
+        assert parser.can_parse("!echo hello", session) is True
 
         # Non-shell commands are rejected
-        assert parser.can_parse("ls -la", context) is False
-        assert parser.can_parse("regular command", context) is False
-        assert parser.can_parse("help", context) is False
+        assert parser.can_parse("ls -la", session) is False
+        assert parser.can_parse("regular command", session) is False
+        assert parser.can_parse("help", session) is False
 
-    def test_empty_input_handling(self, parser: ShellParser, context: Context) -> None:
+    def test_empty_input_handling(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test handling of empty or whitespace input."""
-        assert parser.can_parse("", context) is False
-        assert parser.can_parse("   ", context) is False
-        assert parser.can_parse("\t\n", context) is False
+        assert parser.can_parse("", session) is False
+        assert parser.can_parse("   ", session) is False
+        assert parser.can_parse("\t\n", session) is False
 
-    def test_shell_prefix_only(self, parser: ShellParser, context: Context) -> None:
+    def test_shell_prefix_only(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test handling of shell prefix without command."""
-        assert parser.can_parse("!", context) is False
-        assert parser.can_parse("! ", context) is False
-        assert parser.can_parse("!\t", context) is False
+        assert parser.can_parse("!", session) is False
+        assert parser.can_parse("! ", session) is False
+        assert parser.can_parse("!\t", session) is False
 
 
 class TestShellParserBasicCommands:
@@ -73,39 +78,43 @@ class TestShellParserBasicCommands:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_simple_shell_command(self, parser: ShellParser, context: Context) -> None:
+    def test_simple_shell_command(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test parsing simple shell command."""
-        result = parser.parse("!ls", context)
+        result = parser.parse("!ls", session)
 
         assert result.command == "!"
         assert result.shell_command == "ls"
         assert result.raw_input == "!ls"
 
     def test_shell_command_with_args(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with arguments."""
-        result = parser.parse("!ls -la /tmp", context)
+        result = parser.parse("!ls -la /tmp", session)
 
         assert result.command == "!"
         assert result.shell_command == "ls -la /tmp"
         assert result.raw_input == "!ls -la /tmp"
 
     def test_shell_command_with_flags(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with flags."""
-        result = parser.parse("!ps aux", context)
+        result = parser.parse("!ps aux", session)
 
         assert result.command == "!"
         assert result.shell_command == "ps aux"
 
-    def test_complex_shell_command(self, parser: ShellParser, context: Context) -> None:
+    def test_complex_shell_command(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test complex shell command."""
-        result = parser.parse("!find . -name '*.py' -type f", context)
+        result = parser.parse("!find . -name '*.py' -type f", session)
 
         assert result.command == "!"
         assert result.shell_command == "find . -name '*.py' -type f"
@@ -123,12 +132,12 @@ class TestShellParserBasicCommands:
     def test_parametrized_shell_commands(
         self,
         parser: ShellParser,
-        context: Context,
+        session: SessionState,
         shell_cmd: str,
         expected_command: str,
     ) -> None:
         """Test various shell command patterns."""
-        result = parser.parse(shell_cmd, context)
+        result = parser.parse(shell_cmd, session)
         assert result.command == "!"
         assert result.shell_command == expected_command
 
@@ -141,80 +150,82 @@ class TestShellParserComplexCommands:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_piped_command(self, parser: ShellParser, context: Context) -> None:
+    def test_piped_command(self, parser: ShellParser, session: SessionState) -> None:
         """Test shell command with pipes."""
-        result = parser.parse("!ps aux | grep python", context)
+        result = parser.parse("!ps aux | grep python", session)
 
         assert result.command == "!"
         assert result.shell_command == "ps aux | grep python"
         assert "|" in result.shell_command
 
-    def test_complex_pipe_chain(self, parser: ShellParser, context: Context) -> None:
+    def test_complex_pipe_chain(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test complex pipe chain."""
         cmd = "!cat file.txt | grep pattern | sort | uniq -c"
-        result = parser.parse(cmd, context)
+        result = parser.parse(cmd, session)
 
         assert result.command == "!"
         assert result.shell_command == "cat file.txt | grep pattern | sort | uniq -c"
 
     def test_command_with_redirection(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with output redirection."""
-        result = parser.parse("!echo hello > output.txt", context)
+        result = parser.parse("!echo hello > output.txt", session)
 
         assert result.command == "!"
         assert result.shell_command == "echo hello > output.txt"
         assert ">" in result.shell_command
 
     def test_command_with_input_redirection(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with input redirection."""
-        result = parser.parse("!sort < input.txt", context)
+        result = parser.parse("!sort < input.txt", session)
 
         assert result.command == "!"
         assert result.shell_command == "sort < input.txt"
         assert "<" in result.shell_command
 
     def test_command_with_append_redirection(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with append redirection."""
-        result = parser.parse("!echo data >> log.txt", context)
+        result = parser.parse("!echo data >> log.txt", session)
 
         assert result.command == "!"
         assert result.shell_command == "echo data >> log.txt"
         assert ">>" in result.shell_command
 
     def test_command_with_logical_operators(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with logical operators."""
-        result = parser.parse("!mkdir test && cd test", context)
+        result = parser.parse("!mkdir test && cd test", session)
 
         assert result.command == "!"
         assert result.shell_command == "mkdir test && cd test"
         assert "&&" in result.shell_command
 
     def test_command_with_or_operator(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with OR operator."""
-        result = parser.parse("!command1 || command2", context)
+        result = parser.parse("!command1 || command2", session)
 
         assert result.command == "!"
         assert result.shell_command == "command1 || command2"
         assert "||" in result.shell_command
 
     def test_command_with_semicolon(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test shell command with semicolon separator."""
-        result = parser.parse("!echo first; echo second", context)
+        result = parser.parse("!echo first; echo second", session)
 
         assert result.command == "!"
         assert result.shell_command == "echo first; echo second"
@@ -235,12 +246,12 @@ class TestShellParserComplexCommands:
     def test_parametrized_operators(
         self,
         parser: ShellParser,
-        context: Context,
+        session: SessionState,
         shell_cmd: str,
         expected_operators: list,
     ) -> None:
         """Test shell commands with various operators."""
-        result = parser.parse(shell_cmd, context)
+        result = parser.parse(shell_cmd, session)
         assert result.command == "!"
 
         for operator in expected_operators:
@@ -255,62 +266,62 @@ class TestShellParserQuotesAndSpecialChars:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_single_quotes_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that single quotes are preserved."""
-        result = parser.parse("!echo 'hello world'", context)
+        result = parser.parse("!echo 'hello world'", session)
 
         assert result.command == "!"
         assert result.shell_command == "echo 'hello world'"
         assert "'" in result.shell_command
 
     def test_double_quotes_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that double quotes are preserved."""
-        result = parser.parse('!echo "hello world"', context)
+        result = parser.parse('!echo "hello world"', session)
 
         assert result.command == "!"
         assert result.shell_command == 'echo "hello world"'
         assert '"' in result.shell_command
 
     def test_mixed_quotes_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that mixed quotes are preserved."""
-        result = parser.parse("!echo \"single: 'quote'\" 'double: \"quote\"'", context)
+        result = parser.parse("!echo \"single: 'quote'\" 'double: \"quote\"'", session)
 
         assert result.command == "!"
         assert "'" in result.shell_command
         assert '"' in result.shell_command
 
     def test_escaped_characters_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that escaped characters are preserved."""
-        result = parser.parse(r'!echo "escaped \"quote\""', context)
+        result = parser.parse(r'!echo "escaped \"quote\""', session)
 
         assert result.command == "!"
         assert "\\" in result.shell_command or "escaped" in result.shell_command
 
     def test_special_characters_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that special characters are preserved."""
-        result = parser.parse("!echo 'special: !@#$%^&*()'", context)
+        result = parser.parse("!echo 'special: !@#$%^&*()'", session)
 
         assert result.command == "!"
         assert "!@#$%^&*()" in result.shell_command
 
     def test_environment_variables_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that environment variables are preserved."""
-        result = parser.parse("!echo $HOME $USER", context)
+        result = parser.parse("!echo $HOME $USER", session)
 
         assert result.command == "!"
         assert result.shell_command == "echo $HOME $USER"
@@ -318,19 +329,21 @@ class TestShellParserQuotesAndSpecialChars:
         assert "$USER" in result.shell_command
 
     def test_glob_patterns_preserved(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that glob patterns are preserved."""
-        result = parser.parse("!ls *.py", context)
+        result = parser.parse("!ls *.py", session)
 
         assert result.command == "!"
         assert result.shell_command == "ls *.py"
         assert "*.py" in result.shell_command
 
-    def test_complex_special_chars(self, parser: ShellParser, context: Context) -> None:
+    def test_complex_special_chars(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test complex special character combinations."""
         result = parser.parse(
-            "!find . -name '*.txt' -exec grep 'pattern' {} \\;", context
+            "!find . -name '*.txt' -exec grep 'pattern' {} \\;", session
         )
 
         assert result.command == "!"
@@ -346,43 +359,45 @@ class TestShellParserErrorHandling:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_empty_shell_command_error(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that empty shell command raises error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("!", context)
+            parser.parse("!", session)
 
         error = exc_info.value
         assert error.error_type in ["EMPTY_SHELL_COMMAND", "INVALID_INPUT"]
 
     def test_whitespace_only_shell_command_error(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that whitespace-only shell command raises error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("!   ", context)
+            parser.parse("!   ", session)
 
         error = exc_info.value
         assert error.error_type in ["EMPTY_SHELL_COMMAND", "INVALID_INPUT"]
 
     def test_non_shell_command_error(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test that non-shell commands raise error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("regular command", context)
+            parser.parse("regular command", session)
 
         error = exc_info.value
         assert error.error_type in ["NOT_SHELL_COMMAND", "INVALID_INPUT"]
 
-    def test_error_suggestions(self, parser: ShellParser, context: Context) -> None:
+    def test_error_suggestions(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test that parse errors include helpful suggestions."""
         try:
-            parser.parse("regular command", context)
+            parser.parse("regular command", session)
         except ParseError as error:
             # Should suggest using ! prefix
             assert len(error.suggestions) > 0
@@ -398,9 +413,15 @@ class TestShellParserContextAwareness:
 
     def test_different_modes(self, parser: ShellParser) -> None:
         """Test parser behavior in different modes."""
-        interactive_context = Context("interactive", [], {})
-        batch_context = Context("batch", [], {})
-        debug_context = Context("debug", [], {})
+        interactive_context = SessionState(
+            parse_mode="interactive", command_history=[], variables={}
+        )
+        batch_context = SessionState(
+            parse_mode="batch", command_history=[], variables={}
+        )
+        debug_context = SessionState(
+            parse_mode="debug", command_history=[], variables={}
+        )
 
         # Should work in all modes
         assert parser.can_parse("!ls", interactive_context) is True
@@ -409,10 +430,10 @@ class TestShellParserContextAwareness:
 
     def test_history_awareness(self, parser: ShellParser) -> None:
         """Test that parser can access command history."""
-        context_with_history = Context(
-            mode="interactive",
-            history=["!previous command", "another command"],
-            session_state={},
+        context_with_history = SessionState(
+            parse_mode="interactive",
+            command_history=["!previous command", "another command"],
+            variables={},
         )
 
         # Parser should still work with history present
@@ -422,10 +443,10 @@ class TestShellParserContextAwareness:
 
     def test_session_state_awareness(self, parser: ShellParser) -> None:
         """Test that parser can access session state."""
-        context_with_state = Context(
-            mode="interactive",
-            history=[],
-            session_state={"shell": "bash", "cwd": "/tmp"},
+        context_with_state = SessionState(
+            parse_mode="interactive",
+            command_history=[],
+            variables={"shell": "bash", "cwd": "/tmp"},
         )
 
         # Parser should still work with session state
@@ -491,10 +512,12 @@ class TestShellParserRealWorldScenarios:
         return ShellParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_git_shell_commands(self, parser: ShellParser, context: Context) -> None:
+    def test_git_shell_commands(
+        self, parser: ShellParser, session: SessionState
+    ) -> None:
         """Test git commands executed through shell."""
         commands = [
             "!git status",
@@ -505,13 +528,13 @@ class TestShellParserRealWorldScenarios:
         ]
 
         for cmd in commands:
-            assert parser.can_parse(cmd, context)
-            result = parser.parse(cmd, context)
+            assert parser.can_parse(cmd, session)
+            result = parser.parse(cmd, session)
             assert result.command == "!"
             assert "git" in result.shell_command
 
     def test_system_monitoring_commands(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test system monitoring shell commands."""
         commands = [
@@ -524,13 +547,13 @@ class TestShellParserRealWorldScenarios:
         ]
 
         for cmd in commands:
-            assert parser.can_parse(cmd, context)
-            result = parser.parse(cmd, context)
+            assert parser.can_parse(cmd, session)
+            result = parser.parse(cmd, session)
             assert result.command == "!"
             assert result.shell_command == cmd[1:]  # Without the ! prefix
 
     def test_file_operations_commands(
-        self, parser: ShellParser, context: Context
+        self, parser: ShellParser, session: SessionState
     ) -> None:
         """Test file operation shell commands."""
         commands = [
@@ -543,11 +566,11 @@ class TestShellParserRealWorldScenarios:
         ]
 
         for cmd in commands:
-            assert parser.can_parse(cmd, context)
-            result = parser.parse(cmd, context)
+            assert parser.can_parse(cmd, session)
+            result = parser.parse(cmd, session)
             assert result.command == "!"
 
-    def test_docker_commands(self, parser: ShellParser, context: Context) -> None:
+    def test_docker_commands(self, parser: ShellParser, session: SessionState) -> None:
         """Test Docker commands through shell."""
         commands = [
             "!docker ps",
@@ -558,8 +581,8 @@ class TestShellParserRealWorldScenarios:
         ]
 
         for cmd in commands:
-            assert parser.can_parse(cmd, context)
-            result = parser.parse(cmd, context)
+            assert parser.can_parse(cmd, session)
+            result = parser.parse(cmd, session)
             assert result.command == "!"
             assert "docker" in result.shell_command.lower()
 
@@ -572,11 +595,11 @@ class TestShellParserIntegration:
         return ShellParser()
 
     @pytest.fixture
-    def rich_context(self) -> Context:
-        return Context(
-            mode="interactive",
-            history=["!previous shell command", "regular command"],
-            session_state={
+    def rich_session(self) -> SessionState:
+        return SessionState(
+            parse_mode="interactive",
+            command_history=["!previous shell command", "regular command"],
+            variables={
                 "shell": "bash",
                 "user": "testuser",
                 "cwd": "/home/testuser",
@@ -584,17 +607,17 @@ class TestShellParserIntegration:
         )
 
     def test_complete_workflow(
-        self, parser: ShellParser, rich_context: Context
+        self, parser: ShellParser, rich_session: SessionState
     ) -> None:
         """Test complete shell parsing workflow."""
         test_command = "!ps aux | grep python | wc -l"
 
         # Check if can parse
-        can_parse = parser.can_parse(test_command, rich_context)
+        can_parse = parser.can_parse(test_command, rich_session)
         assert can_parse is True
 
         # Parse command
-        result = parser.parse(test_command, rich_context)
+        result = parser.parse(test_command, rich_session)
         assert result.command == "!"
         assert result.shell_command == "ps aux | grep python | wc -l"
         assert result.raw_input == test_command
@@ -604,7 +627,7 @@ class TestShellParserIntegration:
         assert isinstance(suggestions, list)
 
     def test_edge_case_handling(
-        self, parser: ShellParser, rich_context: Context
+        self, parser: ShellParser, rich_session: SessionState
     ) -> None:
         """Test handling of edge cases."""
         edge_cases = [
@@ -614,25 +637,31 @@ class TestShellParserIntegration:
         ]
 
         for input_cmd, _expected_shell_cmd in edge_cases:
-            if parser.can_parse(input_cmd, rich_context):
-                result = parser.parse(input_cmd, rich_context)
+            if parser.can_parse(input_cmd, rich_session):
+                result = parser.parse(input_cmd, rich_session)
                 assert result.command == "!"
                 # Shell command should be cleaned up appropriately
 
     def test_consistency_across_contexts(self, parser: ShellParser) -> None:
         """Test that parser behaves consistently across different contexts."""
         contexts = [
-            Context("interactive", [], {}),
-            Context("batch", ["prev"], {"mode": "batch"}),
-            Context("debug", [], {"debug": True}),
+            SessionState(parse_mode="interactive", command_history=[], variables={}),
+            SessionState(
+                parse_mode="batch",
+                command_history=["prev"],
+                variables={"mode": "batch"},
+            ),
+            SessionState(
+                parse_mode="debug", command_history=[], variables={"debug": True}
+            ),
         ]
 
         test_command = "!echo test"
 
         results = []
-        for context in contexts:
-            if parser.can_parse(test_command, context):
-                result = parser.parse(test_command, context)
+        for session in contexts:
+            if parser.can_parse(test_command, session):
+                result = parser.parse(test_command, session)
                 results.append(result)
 
         # All results should have same basic structure
@@ -644,7 +673,7 @@ class TestShellParserIntegration:
                 assert result.raw_input == first_result.raw_input
 
     def test_protocol_compliance_integration(
-        self, parser: ShellParser, rich_context: Context
+        self, parser: ShellParser, rich_session: SessionState
     ) -> None:
         """Test complete protocol compliance in integration context."""
         # Check that parser has all required protocol methods
@@ -659,12 +688,12 @@ class TestShellParserIntegration:
         test_input = "!ls -la"
 
         # can_parse should return boolean
-        can_parse_result = parser.can_parse(test_input, rich_context)
+        can_parse_result = parser.can_parse(test_input, rich_session)
         assert isinstance(can_parse_result, bool)
 
         # If can parse, then parse should work
         if can_parse_result:
-            parse_result = parser.parse(test_input, rich_context)
+            parse_result = parser.parse(test_input, rich_session)
             assert isinstance(parse_result, ParseResult)
             assert parse_result.raw_input == test_input
 

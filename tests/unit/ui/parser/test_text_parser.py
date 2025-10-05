@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser.parsers import TextParser
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 pytestmark = pytest.mark.parser
 
@@ -19,30 +20,36 @@ class TestTextParserBasics:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        """Create basic context for testing."""
-        return Context(mode="interactive", history=[], session_state={})
+    def session(self) -> SessionState:
+        """Create basic session state for testing."""
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_parser_instantiation(self, parser: TextParser) -> None:
         """Test that TextParser can be instantiated."""
         assert parser is not None
         assert isinstance(parser, TextParser)
 
-    def test_can_parse_basic_text(self, parser: TextParser, context: Context) -> None:
+    def test_can_parse_basic_text(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test can_parse with basic text input."""
-        assert parser.can_parse("help", context) is True
-        assert parser.can_parse("echo hello", context) is True
-        assert parser.can_parse("ls -la", context) is True
+        assert parser.can_parse("help", session) is True
+        assert parser.can_parse("echo hello", session) is True
+        assert parser.can_parse("ls -la", session) is True
 
-    def test_can_parse_edge_cases(self, parser: TextParser, context: Context) -> None:
+    def test_can_parse_edge_cases(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test can_parse with edge cases."""
-        assert parser.can_parse("", context) is False
-        assert parser.can_parse("   ", context) is False
-        assert parser.can_parse("\t\n", context) is False
+        assert parser.can_parse("", session) is False
+        assert parser.can_parse("   ", session) is False
+        assert parser.can_parse("\t\n", session) is False
 
-    def test_basic_command_parsing(self, parser: TextParser, context: Context) -> None:
+    def test_basic_command_parsing(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing basic commands."""
-        result = parser.parse("help", context)
+        result = parser.parse("help", session)
 
         assert result.command == "help"
         assert result.args == []
@@ -59,31 +66,33 @@ class TestTextParserCommandsAndArgs:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_command_with_single_arg(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test command with single argument."""
-        result = parser.parse("echo hello", context)
+        result = parser.parse("echo hello", session)
 
         assert result.command == "echo"
         assert result.args == ["hello"]
         assert result.raw_input == "echo hello"
 
     def test_command_with_multiple_args(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test command with multiple arguments."""
-        result = parser.parse("echo hello world", context)
+        result = parser.parse("echo hello world", session)
 
         assert result.command == "echo"
         assert result.args == ["hello", "world"]
 
-    def test_command_with_many_args(self, parser: TextParser, context: Context) -> None:
+    def test_command_with_many_args(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test command with many arguments."""
-        result = parser.parse("command arg1 arg2 arg3 arg4 arg5", context)
+        result = parser.parse("command arg1 arg2 arg3 arg4 arg5", session)
 
         assert result.command == "command"
         assert result.args == ["arg1", "arg2", "arg3", "arg4", "arg5"]
@@ -105,13 +114,13 @@ class TestTextParserCommandsAndArgs:
     def test_parametrized_commands(
         self,
         parser: TextParser,
-        context: Context,
+        session: SessionState,
         input_cmd: str,
         expected_command: str,
         expected_args: list[str],
     ) -> None:
         """Test various command and argument combinations."""
-        result = parser.parse(input_cmd, context)
+        result = parser.parse(input_cmd, session)
         assert result.command == expected_command
         # Note: This test may need adjustment based on actual flag parsing logic
         assert expected_command in result.raw_input
@@ -125,51 +134,57 @@ class TestTextParserQuoteHandling:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_double_quoted_string(self, parser: TextParser, context: Context) -> None:
+    def test_double_quoted_string(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing double-quoted strings."""
-        result = parser.parse('echo "hello world"', context)
+        result = parser.parse('echo "hello world"', session)
 
         assert result.command == "echo"
         assert result.args == ["hello world"]
 
-    def test_single_quoted_string(self, parser: TextParser, context: Context) -> None:
+    def test_single_quoted_string(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing single-quoted strings."""
-        result = parser.parse("echo 'hello world'", context)
+        result = parser.parse("echo 'hello world'", session)
 
         assert result.command == "echo"
         assert result.args == ["hello world"]
 
-    def test_mixed_quotes(self, parser: TextParser, context: Context) -> None:
+    def test_mixed_quotes(self, parser: TextParser, session: SessionState) -> None:
         """Test parsing mixed quote types."""
-        result = parser.parse("echo \"single word\" 'another phrase'", context)
+        result = parser.parse("echo \"single word\" 'another phrase'", session)
 
         assert result.command == "echo"
         assert result.args == ["single word", "another phrase"]
 
     def test_nested_quotes_in_string(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test strings containing other quote types."""
-        result = parser.parse("echo \"He said 'hello'\"", context)
+        result = parser.parse("echo \"He said 'hello'\"", session)
 
         assert result.command == "echo"
         assert result.args == ["He said 'hello'"]
 
     def test_quotes_with_special_chars(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test quoted strings with special characters."""
-        result = parser.parse('echo "special chars: !@#$%^&*()"', context)
+        result = parser.parse('echo "special chars: !@#$%^&*()"', session)
 
         assert result.command == "echo"
         assert result.args == ["special chars: !@#$%^&*()"]
 
-    def test_empty_quoted_strings(self, parser: TextParser, context: Context) -> None:
+    def test_empty_quoted_strings(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test empty quoted strings."""
-        result = parser.parse("echo \"\" ''", context)
+        result = parser.parse("echo \"\" ''", session)
 
         assert result.command == "echo"
         assert result.args == ["", ""]
@@ -188,12 +203,12 @@ class TestTextParserQuoteHandling:
     def test_parametrized_quotes(
         self,
         parser: TextParser,
-        context: Context,
+        session: SessionState,
         input_cmd: str,
         expected_args: list[str],
     ) -> None:
         """Test various quote combinations."""
-        result = parser.parse(input_cmd, context)
+        result = parser.parse(input_cmd, session)
         assert result.args == expected_args
 
 
@@ -205,47 +220,49 @@ class TestTextParserFlags:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_single_short_flag(self, parser: TextParser, context: Context) -> None:
+    def test_single_short_flag(self, parser: TextParser, session: SessionState) -> None:
         """Test parsing single short flag."""
-        result = parser.parse("ls -l", context)
+        result = parser.parse("ls -l", session)
 
         assert result.command == "ls"
         assert "l" in result.flags
 
     def test_multiple_short_flags_separate(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test parsing multiple separate short flags."""
-        result = parser.parse("ls -l -a", context)
+        result = parser.parse("ls -l -a", session)
 
         assert result.command == "ls"
         assert "l" in result.flags
         assert "a" in result.flags
 
-    def test_combined_short_flags(self, parser: TextParser, context: Context) -> None:
+    def test_combined_short_flags(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing combined short flags."""
-        result = parser.parse("ls -la", context)
+        result = parser.parse("ls -la", session)
 
         assert result.command == "ls"
         assert "l" in result.flags
         assert "a" in result.flags
 
     def test_complex_flag_combinations(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test complex flag combinations."""
-        result = parser.parse("ls -la -h -v", context)
+        result = parser.parse("ls -la -h -v", session)
 
         assert result.command == "ls"
         expected_flags = {"l", "a", "h", "v"}
         assert result.flags == expected_flags
 
-    def test_flags_with_args(self, parser: TextParser, context: Context) -> None:
+    def test_flags_with_args(self, parser: TextParser, session: SessionState) -> None:
         """Test flags mixed with arguments."""
-        result = parser.parse("ls -la /tmp", context)
+        result = parser.parse("ls -la /tmp", session)
 
         assert result.command == "ls"
         assert "l" in result.flags
@@ -265,12 +282,12 @@ class TestTextParserFlags:
     def test_parametrized_flags(
         self,
         parser: TextParser,
-        context: Context,
+        session: SessionState,
         input_cmd: str,
         expected_flags: set[str],
     ) -> None:
         """Test various flag combinations."""
-        result = parser.parse(input_cmd, context)
+        result = parser.parse(input_cmd, session)
         assert result.flags == expected_flags
 
 
@@ -282,39 +299,39 @@ class TestTextParserOptions:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_single_option(self, parser: TextParser, context: Context) -> None:
+    def test_single_option(self, parser: TextParser, session: SessionState) -> None:
         """Test parsing single option."""
-        result = parser.parse("git commit --message=test", context)
+        result = parser.parse("git commit --message=test", session)
 
         assert result.command == "git"
         assert "commit" in result.args
         assert result.options.get("message") == "test"
 
     def test_option_with_quoted_value(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test option with quoted value."""
-        result = parser.parse('git commit --message="Initial commit"', context)
+        result = parser.parse('git commit --message="Initial commit"', session)
 
         assert result.command == "git"
         assert result.options.get("message") == "Initial commit"
 
-    def test_multiple_options(self, parser: TextParser, context: Context) -> None:
+    def test_multiple_options(self, parser: TextParser, session: SessionState) -> None:
         """Test multiple options."""
-        result = parser.parse("command --option1=value1 --option2=value2", context)
+        result = parser.parse("command --option1=value1 --option2=value2", session)
 
         assert result.command == "command"
         assert result.options.get("option1") == "value1"
         assert result.options.get("option2") == "value2"
 
     def test_options_with_flags_and_args(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test options mixed with flags and arguments."""
-        result = parser.parse("git commit -a --message=test file.txt", context)
+        result = parser.parse("git commit -a --message=test file.txt", session)
 
         assert result.command == "git"
         assert "commit" in result.args
@@ -323,11 +340,11 @@ class TestTextParserOptions:
         assert result.options.get("message") == "test"
 
     def test_option_with_spaces_in_value(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test option with spaces in value."""
         result = parser.parse(
-            'git commit --message="feat: add new parser system"', context
+            'git commit --message="feat: add new parser system"', session
         )
 
         assert result.options.get("message") == "feat: add new parser system"
@@ -344,12 +361,12 @@ class TestTextParserOptions:
     def test_parametrized_options(
         self,
         parser: TextParser,
-        context: Context,
+        session: SessionState,
         input_cmd: str,
         expected_options: dict[str, str],
     ) -> None:
         """Test various option combinations."""
-        result = parser.parse(input_cmd, context)
+        result = parser.parse(input_cmd, session)
         for key, value in expected_options.items():
             assert result.options.get(key) == value
 
@@ -362,13 +379,15 @@ class TestTextParserComplexCommands:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_git_commit_command(self, parser: TextParser, context: Context) -> None:
+    def test_git_commit_command(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing git commit command."""
         cmd = 'git commit -am "feat: add parser system" --author="John Doe <john@example.com>"'
-        result = parser.parse(cmd, context)
+        result = parser.parse(cmd, session)
 
         assert result.command == "git"
         assert "commit" in result.args
@@ -376,10 +395,12 @@ class TestTextParserComplexCommands:
         assert "m" in result.flags
         assert result.options.get("author") == "John Doe <john@example.com>"
 
-    def test_docker_run_command(self, parser: TextParser, context: Context) -> None:
+    def test_docker_run_command(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing docker run command."""
         cmd = "docker run -dit --name=myapp --port=8080:80 nginx:latest"
-        result = parser.parse(cmd, context)
+        result = parser.parse(cmd, session)
 
         assert result.command == "docker"
         assert "run" in result.args
@@ -390,10 +411,12 @@ class TestTextParserComplexCommands:
         assert result.options.get("name") == "myapp"
         assert result.options.get("port") == "8080:80"
 
-    def test_complex_grep_command(self, parser: TextParser, context: Context) -> None:
+    def test_complex_grep_command(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing complex grep command."""
         cmd = 'grep -rn "TODO:" src/ --include="*.py" --exclude-dir=__pycache__'
-        result = parser.parse(cmd, context)
+        result = parser.parse(cmd, session)
 
         assert result.command == "grep"
         assert "TODO:" in result.args
@@ -402,11 +425,11 @@ class TestTextParserComplexCommands:
         assert "n" in result.flags
 
     def test_command_with_all_elements(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test command with flags, options, and arguments."""
         cmd = 'complex-cmd -abc --verbose --output="result.txt" input1.txt input2.txt'
-        result = parser.parse(cmd, context)
+        result = parser.parse(cmd, session)
 
         assert result.command == "complex-cmd"
         assert "input1.txt" in result.args
@@ -424,50 +447,56 @@ class TestTextParserErrorCases:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
-    def test_empty_input_error(self, parser: TextParser, context: Context) -> None:
+    def test_empty_input_error(self, parser: TextParser, session: SessionState) -> None:
         """Test parsing empty input raises error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("", context)
+            parser.parse("", session)
 
         error = exc_info.value
         assert error.error_type in ["EMPTY_INPUT", "INVALID_INPUT"]
 
-    def test_whitespace_only_error(self, parser: TextParser, context: Context) -> None:
+    def test_whitespace_only_error(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test parsing whitespace-only input raises error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("   \t\n  ", context)
+            parser.parse("   \t\n  ", session)
 
         error = exc_info.value
         assert error.error_type in ["EMPTY_INPUT", "INVALID_INPUT"]
 
-    def test_unmatched_quotes_error(self, parser: TextParser, context: Context) -> None:
+    def test_unmatched_quotes_error(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test unmatched quotes raise error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse('echo "unmatched quote', context)
+            parser.parse('echo "unmatched quote', session)
 
         error = exc_info.value
         assert error.error_type in ["QUOTE_MISMATCH", "SYNTAX_ERROR"]
         assert "quote" in error.message.lower()
 
     def test_unclosed_single_quote_error(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test unclosed single quote raises error."""
         with pytest.raises(ParseError) as exc_info:
-            parser.parse("echo 'unclosed", context)
+            parser.parse("echo 'unclosed", session)
 
         error = exc_info.value
         assert error.error_type in ["QUOTE_MISMATCH", "SYNTAX_ERROR"]
 
-    def test_malformed_option_error(self, parser: TextParser, context: Context) -> None:
+    def test_malformed_option_error(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test malformed option syntax raises error."""
         # The string "--invalid-option-format" is actually valid (it's a flag without value)
         # Instead test truly malformed syntax with unmatched quotes
         with pytest.raises(ParseError) as exc_info:
-            parser.parse('cmd "unclosed quote', context)
+            parser.parse('cmd "unclosed quote', session)
 
         error = exc_info.value
         assert error.error_type == "QUOTE_MISMATCH"
@@ -481,43 +510,47 @@ class TestTextParserSpecialCharacters:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", [], {})
+    def session(self) -> SessionState:
+        return SessionState(parse_mode="interactive", command_history=[], variables={})
 
     def test_special_characters_in_args(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test special characters in arguments."""
-        result = parser.parse("echo special@#$%^&*()chars", context)
+        result = parser.parse("echo special@#$%^&*()chars", session)
 
         assert result.command == "echo"
         assert "special@#$%^&*()chars" in result.args
 
-    def test_path_arguments(self, parser: TextParser, context: Context) -> None:
+    def test_path_arguments(self, parser: TextParser, session: SessionState) -> None:
         """Test file path arguments."""
-        result = parser.parse("ls /path/to/file.txt", context)
+        result = parser.parse("ls /path/to/file.txt", session)
 
         assert result.command == "ls"
         assert "/path/to/file.txt" in result.args
 
-    def test_url_arguments(self, parser: TextParser, context: Context) -> None:
+    def test_url_arguments(self, parser: TextParser, session: SessionState) -> None:
         """Test URL arguments."""
-        result = parser.parse("curl https://api.example.com/v1/data", context)
+        result = parser.parse("curl https://api.example.com/v1/data", session)
 
         assert result.command == "curl"
         assert "https://api.example.com/v1/data" in result.args
 
-    def test_escaped_characters(self, parser: TextParser, context: Context) -> None:
+    def test_escaped_characters(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test escaped characters in quoted strings."""
-        result = parser.parse(r'echo "escaped \"quote\""', context)
+        result = parser.parse(r'echo "escaped \"quote\""', session)
 
         assert result.command == "echo"
         # The exact behavior depends on implementation
         assert len(result.args) > 0
 
-    def test_backslash_handling(self, parser: TextParser, context: Context) -> None:
+    def test_backslash_handling(
+        self, parser: TextParser, session: SessionState
+    ) -> None:
         """Test backslash handling."""
-        result = parser.parse(r"echo C:\Windows\System32", context)
+        result = parser.parse(r"echo C:\Windows\System32", session)
 
         assert result.command == "echo"
         assert any("Windows" in arg for arg in result.args)
@@ -561,11 +594,15 @@ class TestTextParserIntegration:
         return TextParser()
 
     @pytest.fixture
-    def context(self) -> Context:
-        return Context("interactive", ["previous cmd"], {"user": "test"})
+    def session(self) -> SessionState:
+        return SessionState(
+            parse_mode="interactive",
+            command_history=["previous cmd"],
+            variables={"user": "test"},
+        )
 
     def test_parser_protocol_compliance(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test that TextParser satisfies Parser protocol."""
         # Check that parser has all required protocol methods
@@ -577,17 +614,17 @@ class TestTextParserIntegration:
         assert callable(parser.get_suggestions)
 
         # Test all protocol methods work
-        assert parser.can_parse("test", context) in [True, False]
+        assert parser.can_parse("test", session) in [True, False]
 
-        if parser.can_parse("valid command", context):
-            result = parser.parse("valid command", context)
+        if parser.can_parse("valid command", session):
+            result = parser.parse("valid command", session)
             assert isinstance(result, ParseResult)
 
         suggestions = parser.get_suggestions("test")
         assert isinstance(suggestions, list)
 
     def test_end_to_end_parsing_workflow(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test complete parsing workflow."""
         test_commands = [
@@ -599,8 +636,8 @@ class TestTextParserIntegration:
         ]
 
         for cmd in test_commands:
-            if parser.can_parse(cmd, context):
-                result = parser.parse(cmd, context)
+            if parser.can_parse(cmd, session):
+                result = parser.parse(cmd, session)
 
                 # Verify result structure
                 assert isinstance(result.command, str)
@@ -611,13 +648,13 @@ class TestTextParserIntegration:
                 assert result.raw_input == cmd
 
     def test_consistency_across_calls(
-        self, parser: TextParser, context: Context
+        self, parser: TextParser, session: SessionState
     ) -> None:
         """Test that parser gives consistent results."""
         cmd = "echo test argument"
 
         # Parse the same command multiple times
-        results = [parser.parse(cmd, context) for _ in range(3)]
+        results = [parser.parse(cmd, session) for _ in range(3)]
 
         # All results should be identical
         for result in results[1:]:

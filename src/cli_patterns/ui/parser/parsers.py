@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import shlex
 
-from cli_patterns.ui.parser.types import Context, ParseError, ParseResult
+from cli_patterns.core.models import SessionState
+from cli_patterns.ui.parser.types import ParseError, ParseResult
 
 
 class TextParser:
@@ -14,12 +15,12 @@ class TextParser:
     Supports proper quote handling using shlex for shell-like parsing.
     """
 
-    def can_parse(self, input: str, context: Context) -> bool:
+    def can_parse(self, input: str, session: SessionState) -> bool:
         """Check if input can be parsed by this text parser.
 
         Args:
             input: Input string to check
-            context: Parsing context
+            session: Current session state
 
         Returns:
             True if input is non-empty text that doesn't start with shell prefix
@@ -33,12 +34,12 @@ class TextParser:
 
         return True
 
-    def parse(self, input: str, context: Context) -> ParseResult:
+    def parse(self, input: str, session: SessionState) -> ParseResult:
         """Parse text input into structured command result.
 
         Args:
             input: Input string to parse
-            context: Parsing context
+            session: Current session state
 
         Returns:
             ParseResult with parsed command, args, flags, and options
@@ -46,7 +47,7 @@ class TextParser:
         Raises:
             ParseError: If parsing fails (e.g., unmatched quotes, empty input)
         """
-        if not self.can_parse(input, context):
+        if not self.can_parse(input, session):
             if not input.strip():
                 raise ParseError(
                     error_type="EMPTY_INPUT",
@@ -146,12 +147,12 @@ class ShellParser:
     preserving the full command after the '!' prefix.
     """
 
-    def can_parse(self, input: str, context: Context) -> bool:
+    def can_parse(self, input: str, session: SessionState) -> bool:
         """Check if input is a shell command.
 
         Args:
             input: Input string to check
-            context: Parsing context
+            session: Current session state
 
         Returns:
             True if input starts with '!' and has content after it
@@ -169,12 +170,12 @@ class ShellParser:
         shell_content = stripped[1:].strip()
         return len(shell_content) > 0
 
-    def parse(self, input: str, context: Context) -> ParseResult:
+    def parse(self, input: str, session: SessionState) -> ParseResult:
         """Parse shell command input.
 
         Args:
             input: Input string starting with '!'
-            context: Parsing context
+            session: Current session state
 
         Returns:
             ParseResult with '!' as command and shell command preserved
@@ -182,7 +183,7 @@ class ShellParser:
         Raises:
             ParseError: If input is not a valid shell command
         """
-        if not self.can_parse(input, context):
+        if not self.can_parse(input, session):
             if not input.strip():
                 raise ParseError(
                     error_type="EMPTY_INPUT",

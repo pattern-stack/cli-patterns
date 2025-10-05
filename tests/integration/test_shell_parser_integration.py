@@ -9,10 +9,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from cli_patterns.core.models import SessionState
 from cli_patterns.ui.parser import (
     CommandMetadata,
     CommandRegistry,
-    Context,
     ParseError,
     ParseResult,
     ParserPipeline,
@@ -48,7 +48,9 @@ class TestShellParserIntegration:
             shell.parser_pipeline = ParserPipeline()
             shell.parser_pipeline.add_parser(ShellParser(), priority=10)
             shell.parser_pipeline.add_parser(TextParser(), priority=5)
-            shell.context = Context()
+            shell.context = SessionState(
+                parse_mode="interactive", command_history=[], variables={}
+            )
             shell.command_registry = CommandRegistry()
 
             # Register built-in commands in registry
@@ -110,7 +112,7 @@ class TestShellParserIntegration:
 
         # Check context exists
         assert hasattr(shell, "context")
-        assert isinstance(shell.context, Context)
+        assert isinstance(shell.context, SessionState)
 
         # Check command registry exists
         assert hasattr(shell, "command_registry")
@@ -204,7 +206,7 @@ class TestShellParserIntegration:
                 result = shell.parser_pipeline.parse(user_input, shell.context)
 
                 # Add to history
-                shell.context.add_to_history(user_input)
+                shell.context.command_history.append(user_input)
 
                 if result.command == "!":
                     # Execute shell command (we'll mock this)
@@ -302,22 +304,22 @@ class TestShellParserIntegration:
         shell = shell_with_parser
 
         # Add some commands to history
-        shell.context.add_to_history("help")
-        shell.context.add_to_history("echo hello")
-        shell.context.add_to_history("! ls -la")
+        shell.context.command_history.append("help")
+        shell.context.command_history.append("echo hello")
+        shell.context.command_history.append("! ls -la")
 
         # Check history
-        assert len(shell.context.history) == 3
-        assert "help" in shell.context.history
-        assert "echo hello" in shell.context.history
-        assert "! ls -la" in shell.context.history
+        assert len(shell.context.command_history) == 3
+        assert "help" in shell.context.command_history
+        assert "echo hello" in shell.context.command_history
+        assert "! ls -la" in shell.context.command_history
 
         # Test session state
-        shell.context.set_state("current_theme", "dark")
-        assert shell.context.get_state("current_theme") == "dark"
+        shell.context.variables["current_theme"] = "dark"
+        assert shell.context.variables.get("current_theme") == "dark"
 
         # Test state with default
-        assert shell.context.get_state("nonexistent", "default") == "default"
+        assert shell.context.variables.get("nonexistent", "default") == "default"
 
     @pytest.mark.asyncio
     async def test_error_handling_and_recovery(self, shell_with_parser):
@@ -325,7 +327,7 @@ class TestShellParserIntegration:
         shell = shell_with_parser
 
         # Create a parser that might throw errors
-        def parse_with_error(input_str, context):
+        def parse_with_error(input_str, session):
             if input_str.startswith("error"):
                 raise ParseError(
                     "test_error", "Test parsing error", ["suggestion1", "suggestion2"]
@@ -427,15 +429,15 @@ class TestShellParserIntegration:
         shell = shell_with_parser
 
         # Default context should be in text mode
-        assert shell.context.mode == "text"
+        assert shell.context.parse_mode == "interactive"
 
-        # Should be able to set current directory
-        shell.context.current_directory = "/tmp"
-        assert shell.context.current_directory == "/tmp"
+        # Should be able to set current directory (SessionState doesn't have current_directory)
+        # shell.context.current_directory = "/tmp"
+        # assert shell.context.current_directory == "/tmp"
 
         # Should be able to change mode
-        shell.context.mode = "interactive"
-        assert shell.context.mode == "interactive"
+        shell.context.parse_mode = "batch"
+        assert shell.context.parse_mode == "batch"
 
     @pytest.mark.asyncio
     async def test_end_to_end_command_flow(self, shell_with_parser):
@@ -450,7 +452,7 @@ class TestShellParserIntegration:
             result = shell.parser_pipeline.parse(user_input, shell.context)
 
             # Step 2: Add to history
-            shell.context.add_to_history(user_input)
+            shell.context.command_history.append(user_input)
 
             # Step 3: Handle different command types
             if result.command == "!":
@@ -480,6 +482,6 @@ class TestShellParserIntegration:
         assert any("unknown:unknown_cmd:" in cmd for cmd in processed_commands)
 
         # Verify history tracking
-        assert len(shell.context.history) == 4
-        assert "help" in shell.context.history
-        assert "! ls -la" in shell.context.history
+        assert len(shell.context.command_history) == 4
+        assert "help" in shell.context.command_history
+        assert "! ls -la" in shell.context.command_history

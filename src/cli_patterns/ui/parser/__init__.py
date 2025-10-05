@@ -12,8 +12,11 @@ structured command data, including support for:
 Core Types:
     ParseResult: Structured result of parsing user input
     CommandArgs: Container for positional and named arguments
-    Context: Parsing context with history and session state
     ParseError: Exception raised during parsing failures
+
+Note:
+    The parser system now uses SessionState from cli_patterns.core.models
+    instead of a parser-specific Context type for unified state management.
 
 Protocols:
     Parser: Protocol for implementing custom parsers
@@ -34,13 +37,16 @@ from cli_patterns.ui.parser.parsers import ShellParser, TextParser
 from cli_patterns.ui.parser.pipeline import ParserPipeline
 from cli_patterns.ui.parser.protocols import Parser
 from cli_patterns.ui.parser.registry import CommandMetadata, CommandRegistry
-from cli_patterns.ui.parser.types import CommandArgs, Context, ParseError, ParseResult
+from cli_patterns.ui.parser.types import CommandArgs, ParseError, ParseResult
+
+# NOTE: SessionState is now imported from core.models instead of parser.types
+# Import it from core if you need the unified session state:
+#   from cli_patterns.core.models import SessionState
 
 __all__ = [
     # Core Types
     "ParseResult",
     "CommandArgs",
-    "Context",
     "ParseError",
     # Protocols
     "Parser",

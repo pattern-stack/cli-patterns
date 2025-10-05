@@ -19,6 +19,7 @@ from prompt_toolkit.styles import Style as PromptStyle
 from rich.table import Table
 
 from ..config.theme_loader import initialize_themes
+from ..core.models import SessionState
 from ..execution.subprocess_executor import SubprocessExecutor
 from .design.components import Prompt as PromptComponent
 from .design.icons import get_icon_set
@@ -27,7 +28,6 @@ from .design.tokens import CategoryToken, StatusToken
 from .parser import (
     CommandMetadata,
     CommandRegistry,
-    Context,
     ParseError,
     ParseResult,
     ParserPipeline,
@@ -58,7 +58,7 @@ class InteractiveShell:
             ShellParser(), priority=10
         )  # Higher priority for shell commands
         self.parser_pipeline.add_parser(TextParser(), priority=5)
-        self.context = Context(mode="interactive")
+        self.session_state = SessionState(parse_mode="interactive")
         self.command_registry = CommandRegistry()
 
         # Register builtin commands in new registry
@@ -239,10 +239,10 @@ class InteractiveShell:
 
         try:
             # Parse the input using the parser pipeline
-            result = self.parser_pipeline.parse(user_input, self.context)
+            result = self.parser_pipeline.parse(user_input, self.session_state)
 
             # Add to command history
-            self.context.add_to_history(user_input)
+            self.session_state.command_history.append(user_input)
 
             if result.command == "!":
                 # Execute shell command via SubprocessExecutor
@@ -520,7 +520,7 @@ class InteractiveShell:
 
         try:
             # Parse the test input
-            result = self.parser_pipeline.parse(test_input, self.context)
+            result = self.parser_pipeline.parse(test_input, self.session_state)
 
             # Display parsing results
             table = Table(
